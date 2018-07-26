@@ -20,6 +20,8 @@ CFG_CATEGORIES(Core,
     CFG_CATEGORY(General,
         CFG_ENTRY(int,          SqlHistorySize,          10000)
         CFG_ENTRY(int,          DdlHistorySize,          1000)
+        CFG_ENTRY(int,          BindParamsCacheSize,     1000)
+        CFG_ENTRY(int,          PopulateHistorySize,     100)
         CFG_ENTRY(QString,      LoadedPlugins,           "")
         CFG_ENTRY(QVariantHash, ActiveCodeFormatter,     QVariantHash())
         CFG_ENTRY(bool,         CheckUpdatesOnStartup,   true)
@@ -31,6 +33,7 @@ CFG_CATEGORIES(Core,
     CFG_CATEGORY(Internal,
         CFG_ENTRY(QVariantList, Functions,               QVariantList())
         CFG_ENTRY(QVariantList, Collations,              QVariantList())
+        CFG_ENTRY(QVariantList, Extensions,              QVariantList())
         CFG_ENTRY(QString,      BugReportUser,           QString())
         CFG_ENTRY(QString,      BugReportPassword,       QString())
         CFG_ENTRY(QString,      BugReportRecentTitle,    QString())
@@ -118,6 +121,7 @@ class API_EXPORT Config : public QObject
         virtual bool isMassSaving() const = 0;
         virtual void set(const QString& group, const QString& key, const QVariant& value) = 0;
         virtual QVariant get(const QString& group, const QString& key) = 0;
+        virtual QVariant get(const QString& group, const QString& key, const QVariant& defaultValue) = 0;
         virtual QHash<QString,QVariant> getAll() = 0;
 
         virtual bool addDb(const QString& name, const QString& path, const QHash<QString, QVariant> &options) = 0;
@@ -144,12 +148,22 @@ class API_EXPORT Config : public QObject
         virtual qint64 addSqlHistory(const QString& sql, const QString& dbName, int timeSpentMillis, int rowsAffected) = 0;
         virtual void updateSqlHistory(qint64 id, const QString& sql, const QString& dbName, int timeSpentMillis, int rowsAffected) = 0;
         virtual void clearSqlHistory() = 0;
+        virtual void deleteSqlHistory(const QList<qint64>& ids) = 0;
         virtual QAbstractItemModel* getSqlHistoryModel() = 0;
 
         virtual void addCliHistory(const QString& text) = 0;
         virtual void applyCliHistoryLimit() = 0;
         virtual void clearCliHistory() = 0;
         virtual QStringList getCliHistory() const = 0;
+
+        virtual void addBindParamHistory(const QVector<QPair<QString, QVariant>>& params) = 0;
+        virtual void applyBindParamHistoryLimit() = 0;
+        virtual QVector<QPair<QString, QVariant>> getBindParamHistory(const QStringList& paramNames) const = 0;
+
+        virtual void addPopulateHistory(const QString& database, const QString& table, int rows, const QHash<QString, QPair<QString, QVariant>>& columnsPluginsConfig) = 0;
+        virtual void applyPopulateHistoryLimit() = 0;
+        virtual QHash<QString, QPair<QString, QVariant>> getPopulateHistory(const QString& database, const QString& table, int& rows) const = 0;
+        virtual QVariant getPopulateHistory(const QString& pluginName) const = 0;
 
         virtual void addDdlHistory(const QString& queries, const QString& dbName, const QString& dbFile) = 0;
         virtual QList<DdlHistoryEntryPtr> getDdlHistoryFor(const QString& dbName, const QString& dbFile, const QDate& date) = 0;

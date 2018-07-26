@@ -3,6 +3,7 @@
 #include "parser/ast/sqlitecreatetable.h"
 #include "parser/ast/sqliteinsert.h"
 #include "parser/ast/sqlitewith.h"
+#include "parser/ast/sqliteupdate.h"
 #include "parser/keywords.h"
 #include "parser/lexer.h"
 #include "parser/parsererror.h"
@@ -44,6 +45,10 @@ class ParserTest : public QObject
         void testBigNum();
         void testSelectWith();
         void testInsertWithDoubleQuoteValues();
+        void testParseAndRebuildAlias();
+        void testRebuildTokensUpdate();
+        void testRebuildTokensInsertUpsert();
+        void testGetColumnTokensFromInsertUpsert();
         void initTestCase();
         void cleanupTestCase();
 };
@@ -138,7 +143,7 @@ void ParserTest::testGetFullObjects()
     QList<SqliteStatement::FullObject> fullObjects = query->getContextFullObjects();
     QVERIFY(fullObjects.size() == 2);
 
-    foreach (const SqliteStatement::FullObject& fullObj, fullObjects)
+    for (const SqliteStatement::FullObject& fullObj : fullObjects)
     {
         switch (fullObj.type)
         {
@@ -166,7 +171,7 @@ void ParserTest::testGetFullObjects2()
     QList<SqliteStatement::FullObject> fullObjects = query->getContextFullObjects();
     QVERIFY(fullObjects.size() == 5);
 
-    foreach (const SqliteStatement::FullObject& fullObj, fullObjects)
+    for (const SqliteStatement::FullObject& fullObj : fullObjects)
     {
         switch (fullObj.type)
         {
@@ -429,6 +434,68 @@ void ParserTest::testInsertWithDoubleQuoteValues()
     insert->rebuildTokens();
     QString detokenized = insert->detokenize().replace(" ", "");
     QVERIFY(sql.replace(" ", "") == detokenized);
+}
+
+void ParserTest::testParseAndRebuildAlias()
+{
+    QString sql = "SELECT x AS [\"abc\".\"def\"];";
+    bool res = parser3->parse(sql);
+    QVERIFY(res);
+    QVERIFY(parser3->getErrors().isEmpty());
+
+    SqliteQueryPtr query = parser3->getQueries().first();
+    query->rebuildTokens();
+    QString newSql = query->detokenize();
+    QVERIFY(sql == newSql);
+}
+
+void ParserTest::testRebuildTokensUpdate()
+{
+    QString sql = "UPDATE tab SET col1 = 1, (col2, col3) = 2 WHERE x = 3;";
+    bool res = parser3->parse(sql);
+    QVERIFY(res);
+    QVERIFY(parser3->getErrors().isEmpty());
+
+    SqliteUpdatePtr update = parser3->getQueries().first().dynamicCast<SqliteUpdate>();
+    QVERIFY(update->keyValueMap.size() == 2);
+    QVERIFY(update->keyValueMap[1].first.type() == QVariant::StringList);
+    QStringList set2List = update->keyValueMap[1].first.toStringList();
+    QVERIFY(set2List[0] == "col2");
+    QVERIFY(set2List[1] == "col3");
+    QVERIFY(update->where);
+    QVERIFY(!update->table.isNull());
+    QVERIFY(update->where);
+    update->rebuildTokens();
+    QVERIFY(update->tokens.detokenize() == sql);
+}
+
+void ParserTest::testRebuildTokensInsertUpsert()
+{
+    QString sql = "INSERT INTO tab (a1, a2) VALUES (123, 456) ON CONFLICT (b1, b2, b3) DO UPDATE SET col1 = 1, (col2, col3) = 2 WHERE x = 3;";
+    bool res = parser3->parse(sql);
+    QVERIFY(res);
+    QVERIFY(parser3->getErrors().isEmpty());
+
+    SqliteInsertPtr insert = parser3->getQueries().first().dynamicCast<SqliteInsert>();
+    QVERIFY(insert->upsert);
+
+    insert->rebuildTokens();
+    QVERIFY(insert->tokens.detokenize() == sql);
+}
+
+void ParserTest::testGetColumnTokensFromInsertUpsert()
+{
+    QString sql = "INSERT INTO tab (a1, a2) VALUES (123, 456) ON CONFLICT (b1, b2, b3) DO UPDATE SET col1 = 1, (col2, col3) = 2 WHERE x = 3;";
+    bool res = parser3->parse(sql);
+    QVERIFY(res);
+    QVERIFY(parser3->getErrors().isEmpty());
+
+    SqliteInsertPtr insert = parser3->getQueries().first().dynamicCast<SqliteInsert>();
+    QVERIFY(insert->upsert);
+
+    TokenList tk = insert->getContextColumnTokens();
+    qSort(tk.begin(), tk.end(), [](const TokenPtr& t1, const TokenPtr& t2) {return t1->start < t2->start;});
+    QVERIFY(tk.toValueList().join(" ") == "a1 a2 b1 b2 b3 col1 col2 col3 x");
 }
 
 void ParserTest::initTestCase()

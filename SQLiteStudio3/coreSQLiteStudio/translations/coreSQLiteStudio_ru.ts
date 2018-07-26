@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE TS>
-<TS version="2.0" language="ru_RU">
+<TS version="2.1" language="ru_RU">
 <context>
     <name>AbstractDb</name>
     <message>
-        <location filename="../db/abstractdb.cpp" line="306"/>
-        <location filename="../db/abstractdb.cpp" line="323"/>
+        <location filename="../db/abstractdb.cpp" line="343"/>
+        <location filename="../db/abstractdb.cpp" line="360"/>
         <source>Cannot execute query on closed database.</source>
         <translation>Невозможно выполнить запрос при закрытой базе данных.</translation>
     </message>
     <message>
-        <location filename="../db/abstractdb.cpp" line="603"/>
+        <location filename="../db/abstractdb.cpp" line="643"/>
         <source>Error attaching database %1: %2</source>
         <translation>Ошибка во время присоединения базы данных %1: %2</translation>
     </message>
@@ -18,9 +18,8 @@
 <context>
     <name>BugReporter</name>
     <message>
-        <location filename="../services/bugreporter.cpp" line="46"/>
         <source>Invalid login or password</source>
-        <translation>Неправильный логин или пароль</translation>
+        <translation type="vanished">Неправильный логин или пароль</translation>
     </message>
 </context>
 <context>
@@ -146,38 +145,51 @@
     </message>
 </context>
 <context>
+    <name>ConfigImpl</name>
+    <message>
+        <location filename="../services/impl/configimpl.cpp" line="863"/>
+        <source>Could not start database transaction for deleting SQL history, therefore it&apos;s not deleted.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../services/impl/configimpl.cpp" line="870"/>
+        <source>Could not commit database transaction for deleting SQL history, therefore it&apos;s not deleted.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>DbManagerImpl</name>
     <message>
-        <location filename="../services/impl/dbmanagerimpl.cpp" line="63"/>
+        <location filename="../services/impl/dbmanagerimpl.cpp" line="64"/>
         <source>Could not add database %1: %2</source>
         <translation>Не удалось добавить базу данных %1: %2</translation>
     </message>
     <message>
-        <location filename="../services/impl/dbmanagerimpl.cpp" line="138"/>
+        <location filename="../services/impl/dbmanagerimpl.cpp" line="139"/>
         <source>Database %1 could not be updated, because of an error: %2</source>
         <translation>Невозможно обновить базу данных %1 из-за ошибки: %2</translation>
     </message>
     <message>
-        <location filename="../services/impl/dbmanagerimpl.cpp" line="350"/>
-        <location filename="../services/impl/dbmanagerimpl.cpp" line="379"/>
+        <location filename="../services/impl/dbmanagerimpl.cpp" line="355"/>
+        <location filename="../services/impl/dbmanagerimpl.cpp" line="384"/>
         <source>Database file doesn&apos;t exist.</source>
         <translation>Файл базы данных не существует.</translation>
     </message>
     <message>
-        <location filename="../services/impl/dbmanagerimpl.cpp" line="352"/>
-        <location filename="../services/impl/dbmanagerimpl.cpp" line="381"/>
-        <location filename="../services/impl/dbmanagerimpl.cpp" line="604"/>
+        <location filename="../services/impl/dbmanagerimpl.cpp" line="357"/>
+        <location filename="../services/impl/dbmanagerimpl.cpp" line="386"/>
+        <location filename="../services/impl/dbmanagerimpl.cpp" line="609"/>
         <source>No supporting plugin loaded.</source>
         <translatorcomment>Unclear error string. Checking the source didn&apos;t help.</translatorcomment>
         <translation>Модуль поддержки не загружен.</translation>
     </message>
     <message>
-        <location filename="../services/impl/dbmanagerimpl.cpp" line="522"/>
+        <location filename="../services/impl/dbmanagerimpl.cpp" line="527"/>
         <source>Database could not be initialized.</source>
         <translation>Невозможно инициализировать базу данных.</translation>
     </message>
     <message>
-        <location filename="../services/impl/dbmanagerimpl.cpp" line="532"/>
+        <location filename="../services/impl/dbmanagerimpl.cpp" line="537"/>
         <source>No suitable database driver plugin found.</source>
         <translation>Не найден подходящий драйвер базы данных.</translation>
     </message>
@@ -245,17 +257,17 @@ Tables, indexes, triggers and views copied to database %3 will remain.</source>
 <context>
     <name>DbVersionConverter</name>
     <message>
-        <location filename="../dbversionconverter.cpp" line="916"/>
+        <location filename="../dbversionconverter.cpp" line="932"/>
         <source>Target file exists, but could not be overwritten.</source>
         <translation>Целевой файл существует, но не может быть перезаписан.</translation>
     </message>
     <message>
-        <location filename="../dbversionconverter.cpp" line="935"/>
+        <location filename="../dbversionconverter.cpp" line="951"/>
         <source>Could not find proper database plugin to create target database.</source>
         <translation>Невозможно найти подходящий модуль для создания целевой базы данных.</translation>
     </message>
     <message>
-        <location filename="../dbversionconverter.cpp" line="1169"/>
+        <location filename="../dbversionconverter.cpp" line="1185"/>
         <source>Error while converting database: %1</source>
         <translation>Ошибка при конвертации базы данных: %1</translation>
     </message>
@@ -458,20 +470,20 @@ Tables, indexes, triggers and views copied to database %3 will remain.</source>
     </message>
     <message>
         <location filename="../importworker.cpp" line="133"/>
-        <location filename="../importworker.cpp" line="180"/>
-        <location filename="../importworker.cpp" line="187"/>
+        <location filename="../importworker.cpp" line="177"/>
+        <location filename="../importworker.cpp" line="184"/>
         <source>Error while importing data: %1</source>
         <translation>Ошибка при импорте данных: %1</translation>
     </message>
     <message>
         <location filename="../importworker.cpp" line="133"/>
-        <location filename="../importworker.cpp" line="187"/>
+        <location filename="../importworker.cpp" line="184"/>
         <source>Interrupted.</source>
         <comment>import process status update</comment>
         <translation>Прервано.</translation>
     </message>
     <message>
-        <location filename="../importworker.cpp" line="175"/>
+        <location filename="../importworker.cpp" line="172"/>
         <source>Could not import data row number %1. The row was ignored. Problem details: %2</source>
         <translation>Невозможно импортировать строку данных № %1. Строка пропущена. Подробности проблемы: %2</translation>
     </message>
@@ -765,12 +777,12 @@ Tables, indexes, triggers and views copied to database %3 will remain.</source>
         <translation>Невозможно начать транзакцию для заполнения таблицы. Подробности ошибки: %1</translation>
     </message>
     <message>
-        <location filename="../populateworker.cpp" line="63"/>
+        <location filename="../populateworker.cpp" line="70"/>
         <source>Error while populating table: %1</source>
         <translation>Ошибка при заполнении таблицы: %1</translation>
     </message>
     <message>
-        <location filename="../populateworker.cpp" line="74"/>
+        <location filename="../populateworker.cpp" line="81"/>
         <source>Could not commit transaction after table populating. Error details: %1</source>
         <translation>Невозможно завершить транзакцию после заполнения таблицы. Подробности ошибки: %1</translation>
     </message>
@@ -778,71 +790,77 @@ Tables, indexes, triggers and views copied to database %3 will remain.</source>
 <context>
     <name>QObject</name>
     <message>
-        <location filename="../db/abstractdb2.h" line="199"/>
-        <location filename="../db/abstractdb3.h" line="356"/>
+        <location filename="../db/abstractdb2.h" line="222"/>
+        <location filename="../db/abstractdb3.h" line="384"/>
         <source>Could not open database: %1</source>
         <translation>Невозможно открыть базу данных: %1</translation>
     </message>
     <message>
-        <location filename="../db/abstractdb2.h" line="805"/>
-        <location filename="../db/abstractdb3.h" line="1100"/>
+        <location filename="../db/abstractdb2.h" line="833"/>
+        <location filename="../db/abstractdb3.h" line="1132"/>
         <source>Result set expired or no row available.</source>
         <translation>Результирующая выборка устарела или ни одна строка не доступна.</translation>
     </message>
     <message>
-        <location filename="../db/abstractdb3.h" line="376"/>
+        <location filename="../db/abstractdb3.h" line="328"/>
+        <location filename="../db/abstractdb3.h" line="332"/>
+        <source>Could not load extension %1: %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../db/abstractdb3.h" line="405"/>
         <source>Could not close database: %1</source>
         <translation>Невозможно закрыть базу данных: %1</translation>
     </message>
     <message>
-        <location filename="../dbversionconverter.cpp" line="137"/>
-        <location filename="../dbversionconverter.cpp" line="142"/>
-        <location filename="../dbversionconverter.cpp" line="195"/>
-        <location filename="../dbversionconverter.cpp" line="240"/>
-        <location filename="../dbversionconverter.cpp" line="245"/>
-        <location filename="../dbversionconverter.cpp" line="253"/>
-        <location filename="../dbversionconverter.cpp" line="331"/>
+        <location filename="../dbversionconverter.cpp" line="138"/>
+        <location filename="../dbversionconverter.cpp" line="143"/>
+        <location filename="../dbversionconverter.cpp" line="196"/>
+        <location filename="../dbversionconverter.cpp" line="243"/>
+        <location filename="../dbversionconverter.cpp" line="248"/>
+        <location filename="../dbversionconverter.cpp" line="256"/>
+        <location filename="../dbversionconverter.cpp" line="336"/>
         <source>SQLite %1 does not support &apos;%2&apos; statement.</source>
         <translation>SQLite %1 не поддерживает конструкцию &apos;%2&apos;.</translation>
     </message>
     <message>
-        <location filename="../dbversionconverter.cpp" line="201"/>
+        <location filename="../dbversionconverter.cpp" line="202"/>
         <source>SQLite %1 does not support &apos;%2&apos; statement, but the regular table can be created instead if you proceed.</source>
         <translation>SQLite %1 не поддерживает конструкцию &apos;%2&apos;, однако можно создать обычную таблицу, если вы продолжите.</translation>
     </message>
     <message>
-        <location filename="../dbversionconverter.cpp" line="424"/>
+        <location filename="../dbversionconverter.cpp" line="429"/>
         <source>Could not parse statement: %1
 Error details: %2</source>
         <translation>Невозможно проанализировать структуру конструкции: %1 Подробности ошибки: %2</translation>
     </message>
     <message>
-        <location filename="../dbversionconverter.cpp" line="435"/>
-        <location filename="../dbversionconverter.cpp" line="461"/>
-        <location filename="../dbversionconverter.cpp" line="482"/>
-        <location filename="../dbversionconverter.cpp" line="515"/>
+        <location filename="../dbversionconverter.cpp" line="440"/>
+        <location filename="../dbversionconverter.cpp" line="468"/>
+        <location filename="../dbversionconverter.cpp" line="491"/>
+        <location filename="../dbversionconverter.cpp" line="529"/>
         <source>SQLite %1 does not support the &apos;%2&apos; clause. Cannot convert &apos;%3&apos; statement with that clause.</source>
         <translation>SQLite %1 не поддерживает оператор &apos;%2&apos;. Невозможно сконвертировать конструкцию &apos;%3&apos; с этим оператором.</translation>
     </message>
     <message>
-        <location filename="../dbversionconverter.cpp" line="488"/>
+        <location filename="../dbversionconverter.cpp" line="497"/>
         <source>SQLite %1 does not support the &apos;%2&apos; clause in the &apos;%3&apos; statement.</source>
         <translation>SQLite %1 не поддерживает оператор &apos;%2&apos; в конструкции &apos;%3&apos;.</translation>
     </message>
     <message>
-        <location filename="../dbversionconverter.cpp" line="756"/>
+        <location filename="../dbversionconverter.cpp" line="772"/>
         <source>SQLite %1 does not support current date or time clauses in expressions.</source>
         <translation>SQLite %1 не поддерживает операторы текущей даты и текущего времени в выражениях.</translation>
     </message>
     <message>
-        <location filename="../dbversionconverter.cpp" line="759"/>
+        <location filename="../dbversionconverter.cpp" line="775"/>
         <source>SQLite %1 does not support row value clauses in expressions.</source>
         <translation>SQLite %1 не поддерживает операции со значениями строк в выражениях.</translation>
     </message>
     <message>
-        <location filename="../dbversionconverter.cpp" line="770"/>
-        <location filename="../dbversionconverter.cpp" line="773"/>
-        <location filename="../dbversionconverter.cpp" line="784"/>
+        <location filename="../dbversionconverter.cpp" line="786"/>
+        <location filename="../dbversionconverter.cpp" line="789"/>
+        <location filename="../dbversionconverter.cpp" line="800"/>
         <source>SQLite %1 does not support &apos;%2&apos; clause in expressions.</source>
         <translation>SQLite %1 не поддерживает оператор &apos;%2&apos; в выражениях.</translation>
     </message>
@@ -859,13 +877,13 @@ Error details: %2</source>
     </message>
     <message>
         <location filename="../parser/sqlite2_parse.cpp" line="1904"/>
-        <location filename="../parser/sqlite3_parse.cpp" line="2169"/>
+        <location filename="../parser/sqlite3_parse.cpp" line="2212"/>
         <source>Parser stack overflow</source>
         <translation>Переполнение стека анализатора</translation>
     </message>
     <message>
         <location filename="../parser/sqlite2_parse.cpp" line="4465"/>
-        <location filename="../parser/sqlite3_parse.cpp" line="5088"/>
+        <location filename="../parser/sqlite3_parse.cpp" line="5195"/>
         <source>Syntax error</source>
         <translation>Синтаксическая ошибка</translation>
     </message>
@@ -920,58 +938,58 @@ Error details: %2</source>
         <translation>Заполняющий код не может быть пустым.</translation>
     </message>
     <message>
-        <location filename="../selectresolver.cpp" line="352"/>
+        <location filename="../selectresolver.cpp" line="359"/>
         <source>Could not resolve data source for column: %1</source>
         <translation>Невозможно определить источник данных для столбца: %1</translation>
     </message>
     <message>
-        <location filename="../selectresolver.cpp" line="424"/>
+        <location filename="../selectresolver.cpp" line="431"/>
         <source>Could not resolve table for column &apos;%1&apos;.</source>
         <translation>Невозможно определить таблицу для столбца &apos;%1&apos;.</translation>
     </message>
     <message>
-        <location filename="../services/impl/configimpl.cpp" line="614"/>
+        <location filename="../services/impl/configimpl.cpp" line="768"/>
         <source>Could not initialize configuration file. Any configuration changes and queries history will be lost after application restart. Tried to initialize the file at following localizations: %1.</source>
         <translation>Невозможно инициализировать файл конфигурации. Любые изменения конфигурации и история запросов будут утеряны после перезапуска приложения. Попытки инициализации файла предпринимались в следующих местах: %1.</translation>
     </message>
     <message>
-        <location filename="../sqlitestudio.cpp" line="291"/>
+        <location filename="../sqlitestudio.cpp" line="305"/>
         <source>General purpose</source>
         <comment>plugin category name</comment>
         <translation>Общего назначения</translation>
     </message>
     <message>
-        <location filename="../sqlitestudio.cpp" line="292"/>
+        <location filename="../sqlitestudio.cpp" line="306"/>
         <source>Database support</source>
         <comment>plugin category name</comment>
         <translation>Поддержка баз данных</translation>
     </message>
     <message>
-        <location filename="../sqlitestudio.cpp" line="293"/>
+        <location filename="../sqlitestudio.cpp" line="307"/>
         <source>Code formatter</source>
         <comment>plugin category name</comment>
         <translation>Форматирование кода</translation>
     </message>
     <message>
-        <location filename="../sqlitestudio.cpp" line="294"/>
+        <location filename="../sqlitestudio.cpp" line="308"/>
         <source>Scripting languages</source>
         <comment>plugin category name</comment>
         <translation>Скриптовые языки</translation>
     </message>
     <message>
-        <location filename="../sqlitestudio.cpp" line="295"/>
+        <location filename="../sqlitestudio.cpp" line="309"/>
         <source>Exporting</source>
         <comment>plugin category name</comment>
         <translation>Экспорт</translation>
     </message>
     <message>
-        <location filename="../sqlitestudio.cpp" line="296"/>
+        <location filename="../sqlitestudio.cpp" line="310"/>
         <source>Importing</source>
         <comment>plugin category name</comment>
         <translation>Импорт</translation>
     </message>
     <message>
-        <location filename="../sqlitestudio.cpp" line="297"/>
+        <location filename="../sqlitestudio.cpp" line="311"/>
         <source>Table populating</source>
         <comment>plugin category name</comment>
         <translation>Заполнение таблиц</translation>
@@ -982,34 +1000,34 @@ Error details: %2</source>
         <translation>Таблица %1 ссылается на таблицу %2, но описание внешнего ключа не будет обновлено для описания новой таблицы из-за проблем с анализом DDL таблицы %3.</translation>
     </message>
     <message>
-        <location filename="../tablemodifier.cpp" line="389"/>
+        <location filename="../tablemodifier.cpp" line="438"/>
         <source>All columns indexed by the index %1 are gone. The index will not be recreated after table modification.</source>
         <translation>Все столбцы, проиндексированные индексом %1, удалены. Индекс не будет воссоздан после модификации таблицы.</translation>
     </message>
     <message>
-        <location filename="../tablemodifier.cpp" line="428"/>
+        <location filename="../tablemodifier.cpp" line="481"/>
         <source>There is problem with proper processing trigger %1. It may be not fully updated afterwards and will need your attention.</source>
         <translation>Возникла проблема при обработке триггера %1. Впоследствии он не будет полностью обновлён и потребует вашего внимания.</translation>
     </message>
     <message>
-        <location filename="../tablemodifier.cpp" line="475"/>
+        <location filename="../tablemodifier.cpp" line="528"/>
         <source>Cannot not update trigger %1 according to table %2 modification.</source>
         <translation>Невозможно обновить триггер %1 в соответствии с модификацией таблицы %2.</translation>
     </message>
     <message>
-        <location filename="../tablemodifier.cpp" line="655"/>
-        <location filename="../tablemodifier.cpp" line="679"/>
-        <location filename="../tablemodifier.cpp" line="698"/>
+        <location filename="../tablemodifier.cpp" line="708"/>
+        <location filename="../tablemodifier.cpp" line="732"/>
+        <location filename="../tablemodifier.cpp" line="751"/>
         <source>There is a problem with updating an %1 statement within %2 trigger. One of the %1 substatements which might be referring to table %3 cannot be properly modified. Manual update of the trigger may be necessary.</source>
         <translation>Возникла проблема при обновлении конструкции %1 внутри триггера %2. Одна из вложенных конструкций %1, которая возможно ссылается на таблицу %3, не может быть корректно модифицирована. Возможно необходима ручная правка триггера.</translation>
     </message>
     <message>
-        <location filename="../tablemodifier.cpp" line="443"/>
+        <location filename="../tablemodifier.cpp" line="496"/>
         <source>All columns covered by the trigger %1 are gone. The trigger will not be recreated after table modification.</source>
         <translation>Все столбцы, затронутые в триггере %1, удалены. Триггер не будет воссоздан после модификации таблицы.</translation>
     </message>
     <message>
-        <location filename="../tablemodifier.cpp" line="493"/>
+        <location filename="../tablemodifier.cpp" line="546"/>
         <source>Cannot not update view %1 according to table %2 modifications.
 The view will remain as it is.</source>
         <translation>Невозможно обновить представление %1 в соответствии с модификациями таблицы %2.
@@ -1034,32 +1052,37 @@ The view will remain as it is.</source>
         <source>SQLiteStudio was unable to resolve columns returned by the new view, therefore it won&apos;t be able to tell which triggers might fail during the recreation process.</source>
         <translation>SQLiteStudio не удалось определить столбцы, возвращаемые новым представлением, поэтому невозможно указать, какие триггеры могут сломаться в процессе воссоздания.</translation>
     </message>
+    <message>
+        <location filename="../common/utils.cpp" line="1022"/>
+        <source>Could not open file &apos;%1&apos; for reading: %2</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>QueryExecutor</name>
     <message>
-        <location filename="../db/queryexecutor.cpp" line="142"/>
+        <location filename="../db/queryexecutor.cpp" line="186"/>
         <source>Execution interrupted.</source>
         <translation>Выполнение прервано.</translation>
     </message>
     <message>
-        <location filename="../db/queryexecutor.cpp" line="183"/>
+        <location filename="../db/queryexecutor.cpp" line="227"/>
         <source>Database is not open.</source>
         <translation>База данных не открыта.</translation>
     </message>
     <message>
-        <location filename="../db/queryexecutor.cpp" line="191"/>
+        <location filename="../db/queryexecutor.cpp" line="235"/>
         <source>Only one query can be executed simultaneously.</source>
         <translation>Одновременно может быть выполнен только один запрос.</translation>
     </message>
     <message>
-        <location filename="../db/queryexecutor.cpp" line="294"/>
-        <location filename="../db/queryexecutor.cpp" line="568"/>
+        <location filename="../db/queryexecutor.cpp" line="339"/>
+        <location filename="../db/queryexecutor.cpp" line="618"/>
         <source>An error occured while executing the count(*) query, thus data paging will be disabled. Error details from the database: %1</source>
         <translation>Возникла ошибка при выполнении запроса count(*), поэтому разбивка данных по страницам отключена. Детали ошибки из базы данных: %1</translation>
     </message>
     <message>
-        <location filename="../db/queryexecutor.cpp" line="479"/>
+        <location filename="../db/queryexecutor.cpp" line="529"/>
         <source>SQLiteStudio was unable to extract metadata from the query. Results won&apos;t be editable.</source>
         <translation>SQLiteStudio не удалось извлечь метаданные из запроса. Результаты нельзя будет редактировать.</translation>
     </message>
@@ -1080,31 +1103,31 @@ The view will remain as it is.</source>
 <context>
     <name>SqlHistoryModel</name>
     <message>
-        <location filename="../sqlhistorymodel.cpp" line="30"/>
+        <location filename="../sqlhistorymodel.cpp" line="34"/>
         <source>Database</source>
         <comment>sql history header</comment>
         <translation>База данных</translation>
     </message>
     <message>
-        <location filename="../sqlhistorymodel.cpp" line="32"/>
+        <location filename="../sqlhistorymodel.cpp" line="36"/>
         <source>Execution date</source>
         <comment>sql history header</comment>
         <translation>Дата выполнения</translation>
     </message>
     <message>
-        <location filename="../sqlhistorymodel.cpp" line="34"/>
+        <location filename="../sqlhistorymodel.cpp" line="38"/>
         <source>Time spent</source>
         <comment>sql history header</comment>
         <translation>Затраченное время</translation>
     </message>
     <message>
-        <location filename="../sqlhistorymodel.cpp" line="36"/>
+        <location filename="../sqlhistorymodel.cpp" line="40"/>
         <source>Rows affected</source>
         <comment>sql history header</comment>
         <translation>Затронуто строк</translation>
     </message>
     <message>
-        <location filename="../sqlhistorymodel.cpp" line="38"/>
+        <location filename="../sqlhistorymodel.cpp" line="42"/>
         <source>SQL</source>
         <comment>sql history header</comment>
         <translation>SQL</translation>
@@ -1113,204 +1136,183 @@ The view will remain as it is.</source>
 <context>
     <name>UpdateManager</name>
     <message>
-        <location filename="../services/updatemanager.cpp" line="131"/>
         <source>An error occurred while checking for updates: %1.</source>
-        <translation>При проверке обновлений возникла ошибка: %1</translation>
+        <translation type="vanished">При проверке обновлений возникла ошибка: %1</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="144"/>
         <source>Could not check available updates, because server responded with invalid message format. It is safe to ignore this warning.</source>
-        <translation>Невозможно проверить наличие обновлений, так как ответ сервера имеет некорректный формат. Это предупреждение можно проигнорировать.</translation>
+        <translation type="vanished">Невозможно проверить наличие обновлений, так как ответ сервера имеет некорректный формат. Это предупреждение можно проигнорировать.</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="175"/>
         <source>An error occurred while reading updates metadata: %1.</source>
-        <translation>При чтении метаданных об обновлениях возникла ошибка: %1</translation>
+        <translation type="vanished">При чтении метаданных об обновлениях возникла ошибка: %1</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="188"/>
         <source>Could not download updates, because server responded with invalid message format. You can try again later or download and install updates manually. See &lt;a href=&quot;%1&quot;&gt;User Manual&lt;/a&gt; for details.</source>
-        <translation>Невозможно загрузить обновления, так как ответ сервера имеет некорректный формат. Вы можете попробовать снова позже или скачать и установить обновления вручную. Подробности смотрите в &lt;a href=&quot;%1&quot;&gt;Руководстве пользователя&lt;/a&gt;.</translation>
+        <translation type="vanished">Невозможно загрузить обновления, так как ответ сервера имеет некорректный формат. Вы можете попробовать снова позже или скачать и установить обновления вручную. Подробности смотрите в &lt;a href=&quot;%1&quot;&gt;Руководстве пользователя&lt;/a&gt;.</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="195"/>
         <source>Could not create temporary directory for downloading the update. Updating aborted.</source>
-        <translation>Невозможно создать временный каталог для загрузки обновления. Обновление прервано.</translation>
+        <translation type="vanished">Невозможно создать временный каталог для загрузки обновления. Обновление прервано.</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="206"/>
         <source>There was no updates to download. Updating aborted.</source>
-        <translation>Нет обновлений для загрузки. Обновление прервано.</translation>
+        <translation type="vanished">Нет обновлений для загрузки. Обновление прервано.</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="241"/>
         <source>Downloading: %1</source>
-        <translation>Загрузка: %1</translation>
+        <translation type="vanished">Загрузка: %1</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="247"/>
         <source>Could not determinate file name from update URL: %1. Updating aborted.</source>
-        <translation>Невозможно определить имя файла из URL обновления. Обновление прервано.</translation>
+        <translation type="vanished">Невозможно определить имя файла из URL обновления. Обновление прервано.</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="255"/>
         <source>Failed to open file &apos;%1&apos; for writting: %2. Updating aborted.</source>
-        <translation>Не удалось открыть файл %1 для записи: %2. Обновление прервано.</translation>
+        <translation type="vanished">Не удалось открыть файл %1 для записи: %2. Обновление прервано.</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="276"/>
         <source>Installing updates.</source>
-        <translation>Установка обновлений.</translation>
+        <translation type="vanished">Установка обновлений.</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="287"/>
         <source>Could not copy current application directory into %1 directory.</source>
-        <translation>Невозможно скопировать текущий каталог приложения в каталог %1.</translation>
+        <translation type="vanished">Невозможно скопировать текущий каталог приложения в каталог %1.</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="340"/>
         <source>Could not create directory %1.</source>
-        <translation>Невозможно создать каталог %1.</translation>
+        <translation type="vanished">Невозможно создать каталог %1.</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="348"/>
         <source>Could not rename directory %1 to %2.
 Details: %3</source>
-        <translation>Невозможно переименовать каталог %1 в %2.
+        <translation type="vanished">Невозможно переименовать каталог %1 в %2.
 Подробности: %3</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="352"/>
         <source>Cannot not rename directory %1 to %2.
 Details: %3</source>
-        <translation>Невозможно переименовать каталог %1 в %2.
+        <translation type="vanished">Невозможно переименовать каталог %1 в %2.
 Подробности: %3</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="360"/>
         <source>Could not move directory %1 to %2 and also failed to restore original directory, so the original SQLiteStudio directory is now located at: %3</source>
-        <translation>Невозможно переместить каталог %1 в %2, а также не удалось восстановить оригинальный каталог, поэтому оригинальный каталог SQLiteStudio теперь расположен в: %3</translation>
+        <translation type="vanished">Невозможно переместить каталог %1 в %2, а также не удалось восстановить оригинальный каталог, поэтому оригинальный каталог SQLiteStudio теперь расположен в: %3</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="365"/>
         <source>Could not rename directory %1 to %2. Rolled back to the original SQLiteStudio version.</source>
-        <translation>Невозможно переименовать каталог %1 в %2. Восстановлена изначальная версия SQLiteStudio.</translation>
+        <translation type="vanished">Невозможно переименовать каталог %1 в %2. Восстановлена изначальная версия SQLiteStudio.</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="444"/>
         <source>Could not unpack component %1 into %2 directory.</source>
-        <translation>Невозможно распаковать компонент %1 в каталог %2.</translation>
+        <translation type="vanished">Невозможно распаковать компонент %1 в каталог %2.</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="555"/>
         <source>Could not find permissions elevator application to run update as a root. Looked for: %1</source>
-        <translation>Невозможно найти приложение повышения привилегий для запуска обновления с правами root. Были испробованы: %1</translation>
+        <translation type="vanished">Невозможно найти приложение повышения привилегий для запуска обновления с правами root. Были испробованы: %1</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="562"/>
         <source>Could not execute final updating steps as root: %1</source>
-        <translation>Невозможно выполнить финальные шаги обновления с правами root: %1</translation>
+        <translation type="vanished">Невозможно выполнить финальные шаги обновления с правами root: %1</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="591"/>
-        <location filename="../services/updatemanager.cpp" line="600"/>
-        <location filename="../services/updatemanager.cpp" line="613"/>
-        <location filename="../services/updatemanager.cpp" line="623"/>
         <source>Could not execute final updating steps as admin: %1</source>
-        <translation>Невозможно выполнить финальные шаги обновления с правами администратора: %1</translation>
+        <translation type="vanished">Невозможно выполнить финальные шаги обновления с правами администратора: %1</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="591"/>
         <source>Cannot create temporary directory for updater.</source>
-        <translation>Невозможно создать временный каталог для установщика обновлений.</translation>
+        <translation type="vanished">Невозможно создать временный каталог для установщика обновлений.</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="600"/>
         <source>Cannot create updater script file.</source>
-        <translation>Невозможно создать файл скрипта обновления.</translation>
+        <translation type="vanished">Невозможно создать файл скрипта обновления.</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="633"/>
         <source>Updating canceled.</source>
-        <translation>Обновление отменено.</translation>
+        <translation type="vanished">Обновление отменено.</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="661"/>
         <source>Could not execute final updating steps as administrator.</source>
-        <translation>Невозможно выполнить финальные шаги обновления с правами администратора.</translation>
+        <translation type="vanished">Невозможно выполнить финальные шаги обновления с правами администратора.</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="673"/>
         <source>Could not execute final updating steps as administrator. Updater startup timed out.</source>
-        <translation>Невозможно выполнить финальные шаги обновления с правами администратора. Превышен тайм-аут запуска программы обновления.</translation>
+        <translation type="vanished">Невозможно выполнить финальные шаги обновления с правами администратора. Превышен тайм-аут запуска программы обновления.</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="679"/>
         <source>Could not execute final updating steps as administrator. Updater operation timed out.</source>
-        <translation>Невозможно выполнить финальные шаги обновления с правами администратора. Превышен тайм-аут операции программы обновления.</translation>
+        <translation type="vanished">Невозможно выполнить финальные шаги обновления с правами администратора. Превышен тайм-аут операции программы обновления.</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="696"/>
         <source>Could not clean up temporary directory %1. You can delete it manually at any time.</source>
-        <translation>Невозможно очистить временный каталог %1. Вы можете удалить его вручную в любое время.</translation>
+        <translation type="vanished">Невозможно очистить временный каталог %1. Вы можете удалить его вручную в любое время.</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="732"/>
         <source>Could not run new version for continuing update.</source>
-        <translation>Невозможно запустить новую версию приложения для продолжения обновления.</translation>
+        <translation type="vanished">Невозможно запустить новую версию приложения для продолжения обновления.</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="817"/>
         <source>Package not in tar.gz format, cannot install: %1</source>
-        <translation>Пакет не в формате tar.gz, установка невозможна: %1</translation>
+        <translation type="vanished">Пакет не в формате tar.gz, установка невозможна: %1</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="824"/>
         <source>Package %1 cannot be installed, because cannot move it to directory: %2</source>
-        <translation>Пакет %1 не может быть установлен, так как невозможно перенести его в каталог: %2</translation>
+        <translation type="vanished">Пакет %1 не может быть установлен, так как невозможно перенести его в каталог: %2</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="833"/>
         <source>Package %1 cannot be installed, because cannot unpack it: %2</source>
-        <translation>Пакет %1 не может быть установлен, так как его невозможно распаковать: %2</translation>
+        <translation type="vanished">Пакет %1 не может быть установлен, так как его невозможно распаковать: %2</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="852"/>
         <source>Package not in zip format, cannot install: %1</source>
-        <translation>Пакет не в формате zip, установка невозможна: %1</translation>
+        <translation type="vanished">Пакет не в формате zip, установка невозможна: %1</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="859"/>
         <source>Package %1 cannot be installed, because cannot unzip it to directory %2: %3</source>
-        <translation>Пакет %1 не может быть установлен, так как его невозможно распаковать в каталог %2: %3</translation>
+        <translation type="vanished">Пакет %1 не может быть установлен, так как его невозможно распаковать в каталог %2: %3</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="873"/>
         <source>Package %1 cannot be installed, because cannot unzip it to directory: %2</source>
-        <translation>Пакет %1 не может быть установлен, так как его невозможно распаковать в каталог: %2</translation>
+        <translation type="vanished">Пакет %1 не может быть установлен, так как его невозможно распаковать в каталог: %2</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="923"/>
-        <location filename="../services/updatemanager.cpp" line="932"/>
         <source>Could not rename directory %1 to %2.</source>
-        <translation>Невозможно переименовать каталог %1 в %2.</translation>
+        <translation type="vanished">Невозможно переименовать каталог %1 в %2.</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="945"/>
         <source>Could not delete directory %1.</source>
-        <translation>Невозможно удалить каталог %1.</translation>
+        <translation type="vanished">Невозможно удалить каталог %1.</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="961"/>
         <source>Error executing update command: %1
 Error message: %2</source>
-        <translation>Ошибка при выполнении команды обновления: %1
+        <translation type="vanished">Ошибка при выполнении команды обновления: %1
 Сообщение об ошибке: %2</translation>
     </message>
     <message>
-        <location filename="../services/updatemanager.cpp" line="1028"/>
         <source>An error occurred while downloading updates: %1. Updating aborted.</source>
-        <translation>При загрузке обновлений произошла ошибка: %1. Обновление прервано.</translation>
+        <translation type="vanished">При загрузке обновлений произошла ошибка: %1. Обновление прервано.</translation>
+    </message>
+    <message>
+        <location filename="../services/updatemanager.cpp" line="48"/>
+        <source>Updates installer executable is missing.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../services/updatemanager.cpp" line="49"/>
+        <location filename="../services/updatemanager.cpp" line="68"/>
+        <source>Unable to check for updates (%1)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../services/updatemanager.cpp" line="66"/>
+        <source>details are unknown</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../services/updatemanager.cpp" line="81"/>
+        <source>Unable to run updater application (%1). Please report this.</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 </TS>

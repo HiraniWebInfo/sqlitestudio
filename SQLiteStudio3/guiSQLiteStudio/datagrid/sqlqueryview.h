@@ -7,6 +7,7 @@
 #include "guiSQLiteStudio_global.h"
 #include "common/table.h"
 #include <QTableView>
+#include <QHeaderView>
 
 class SqlQueryItemDelegate;
 class SqlQueryItem;
@@ -19,9 +20,10 @@ class QMenu;
 
 CFG_KEY_LIST(SqlQueryView, QObject::tr("Data grid view"),
     CFG_KEY_ENTRY(COPY,              Qt::CTRL + Qt::Key_C,              QObject::tr("Copy cell(s) contents to clipboard"))
-//    CFG_KEY_ENTRY(COPY_AS,           Qt::CTRL + Qt::SHIFT + Qt::Key_C,  QObject::tr(""))
+    CFG_KEY_ENTRY(COPY_WITH_HEADER,  Qt::CTRL + Qt::SHIFT + Qt::Key_C,  QObject::tr("Copy cell(s) contents together with header to clipboard"))
+//    CFG_KEY_ENTRY(COPY_AS,           Qt::CTRL + Qt::ALT + Qt::Key_C,  QObject::tr(""))
     CFG_KEY_ENTRY(PASTE,             Qt::CTRL + Qt::Key_V,              QObject::tr("Paste cell(s) contents from clipboard"))
-//    CFG_KEY_ENTRY(PASTE_AS,          Qt::CTRL + Qt::SHIFT + Qt::Key_V,  QObject::tr(""))
+//    CFG_KEY_ENTRY(PASTE_AS,          Qt::CTRL + Qt::ALT + Qt::Key_V,  QObject::tr(""))
     CFG_KEY_ENTRY(ERASE,             Qt::ALT + Qt::Key_Backspace,       QObject::tr("Set empty value to selected cell(s)"))
     CFG_KEY_ENTRY(SET_NULL,          Qt::Key_Backspace,                 QObject::tr("Set NULL value to selected cell(s)"))
     CFG_KEY_ENTRY(COMMIT,            Qt::CTRL + Qt::Key_Return,         QObject::tr("Commit changes to cell(s) contents"))
@@ -40,6 +42,7 @@ class GUI_API_EXPORT SqlQueryView : public QTableView, public ExtActionContainer
         enum Action
         {
             COPY,
+            COPY_WITH_HEADER,
             COPY_AS,
             PASTE,
             PASTE_AS,
@@ -78,8 +81,20 @@ class GUI_API_EXPORT SqlQueryView : public QTableView, public ExtActionContainer
         bool getSimpleBrowserMode() const;
         void setSimpleBrowserMode(bool value);
         void setIgnoreColumnWidthChanges(bool ignore);
+        QMenu* getHeaderContextMenu() const;
+
+    protected:
+        void scrollContentsBy(int dx, int dy);
 
     private:
+        class Header : public QHeaderView
+        {
+            public:
+                explicit Header(SqlQueryView* parent);
+
+                QSize sectionSizeFromContents(int section) const;
+        };
+
         void init();
         void setupWidgetCover();
         void createActions();
@@ -91,8 +106,10 @@ class GUI_API_EXPORT SqlQueryView : public QTableView, public ExtActionContainer
         void paste(const QList<QList<QVariant>>& data);
         void addFkActionsToContextMenu(SqlQueryItem* currentItem);
         void goToReferencedRow(const QString& table, const QString& column, const QVariant& value);
+        void copy(bool withHeaders);
 
         constexpr static const char* mimeDataId = "application/x-sqlitestudio-data-view-data";
+        constexpr static const int minHeaderWidth = 15;
 
         SqlQueryItemDelegate* itemDelegate = nullptr;
         QMenu* contextMenu = nullptr;
@@ -104,6 +121,7 @@ class GUI_API_EXPORT SqlQueryView : public QTableView, public ExtActionContainer
         QList<QAction*> additionalActions;
         bool simpleBrowserMode = false;
         bool ignoreColumnWidthChanges = false;
+        int beforeExecutionHorizontalPosition = -1;
 
     private slots:
         void updateCommitRollbackActions(bool enabled);
@@ -124,6 +142,7 @@ class GUI_API_EXPORT SqlQueryView : public QTableView, public ExtActionContainer
         void executionEnded();
         void setCurrentRow(int row);
         void copy();
+        void copyWithHeader();
         void paste();
         void copyAs();
         void pasteAs();
@@ -141,6 +160,7 @@ class GUI_API_EXPORT SqlQueryView : public QTableView, public ExtActionContainer
         void requestForRowInsert();
         void requestForMultipleRowInsert();
         void requestForRowDelete();
+        void scrolledBy(int dx, int dy);
 };
 
 GUI_API_EXPORT int qHash(SqlQueryView::Action action);

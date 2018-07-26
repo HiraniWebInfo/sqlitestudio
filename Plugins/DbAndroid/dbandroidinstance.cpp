@@ -9,6 +9,7 @@
 #include "dbandroidurl.h"
 #include "schemaresolver.h"
 #include "services/notifymanager.h"
+#include "db/dbsqlite3.h"
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -63,6 +64,20 @@ bool DbAndroidInstance::initAfterCreated()
 {
     version = 3;
     return AbstractDb::initAfterCreated();
+}
+
+bool DbAndroidInstance::loadExtension(const QString& filePath, const QString& initFunc)
+{
+    UNUSED(filePath);
+    UNUSED(initFunc);
+    errorCode = 1;
+    errorText = tr("Android SQLite driver does not support loadable extensions.");
+    return false;
+}
+
+bool DbAndroidInstance::isComplete(const QString& sql) const
+{
+    return DbSqlite3::complete(sql);
 }
 
 bool DbAndroidInstance::isOpenInternal()

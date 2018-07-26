@@ -27,7 +27,7 @@ QList<CollationManager::CollationPtr> CollationManagerImpl::getAllCollations() c
 QList<CollationManager::CollationPtr> CollationManagerImpl::getCollationsForDatabase(const QString& dbName) const
 {
     QList<CollationPtr> results;
-    foreach (const CollationPtr& coll, collations)
+    for (const CollationPtr& coll : collations)
     {
         if (coll->allDatabases || coll->databases.contains(dbName, Qt::CaseInsensitive))
             results << coll;
@@ -120,6 +120,6 @@ void CollationManagerImpl::loadFromConfig()
 void CollationManagerImpl::refreshCollationsByKey()
 {
     collationsByKey.clear();
-    foreach (CollationPtr collation, collations)
+    for (CollationPtr collation : collations)
         collationsByKey[collation->name] = collation;
 }

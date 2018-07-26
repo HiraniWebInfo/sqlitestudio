@@ -20,6 +20,7 @@
 #include "dbtree/dbtreeitem.h"
 #include "dbtree/dbtree.h"
 #include "dbtree/dbtreemodel.h"
+#include "common/lazytrigger.h"
 #include <QAction>
 #include <QMenu>
 #include <QTimer>
@@ -80,15 +81,14 @@ void SqlEditor::init()
     connect(completer, SIGNAL(leftPressed()), this, SLOT(completerLeftPressed()));
     connect(completer, SIGNAL(rightPressed()), this, SLOT(completerRightPressed()));
 
-    autoCompleteTimer = new QTimer(this);
-    autoCompleteTimer->setSingleShot(true);
-    autoCompleteTimer->setInterval(autoCompleterDelay);
-    connect(autoCompleteTimer, SIGNAL(timeout()), this, SLOT(checkForAutoCompletion()));
+    autoCompleteTrigger = new LazyTrigger(autoCompleterDelay,
+                                          [this]() -> bool {return autoCompletion && !deletionKeyPressed;},
+                                          this);
+    connect(autoCompleteTrigger, SIGNAL(triggered()), this, SLOT(checkForAutoCompletion()));
 
-    queryParserTimer = new QTimer(this);
-    queryParserTimer->setSingleShot(true);
-    queryParserTimer->setInterval(queryParserDelay);
-    connect(queryParserTimer, SIGNAL(timeout()), this, SLOT(parseContents()));
+    queryParserTrigger = new LazyTrigger(queryParserDelay, this);
+    connect(autoCompleteTrigger, SIGNAL(triggered()), this, SLOT(parseContents()));
+
     connect(this, SIGNAL(textChanged()), this, SLOT(scheduleQueryParser()));
 
     queryParser = new Parser(Dialect::Sqlite3);
@@ -503,14 +503,6 @@ void SqlEditor::completeSelected()
     insertPlainText(value);
 }
 
-void SqlEditor::scheduleAutoCompletion()
-{
-    autoCompleteTimer->stop();
-
-    if (autoCompletion && !deletionKeyPressed)
-        autoCompleteTimer->start();
-}
-
 void SqlEditor::checkForAutoCompletion()
 {
     if (!db || !autoCompletion || deletionKeyPressed || !richFeaturesEnabled)
@@ -546,7 +538,7 @@ void SqlEditor::refreshValidObjects()
         QSet<QString> databases = resolver.getDatabases();
         databases << "main";
         QStringList objects;
-        foreach (const QString& dbName, databases)
+        for (const QString& dbName : databases)
         {
             objects = resolver.getAllObjects(dbName);
             objectsInNamedDb[dbName] << objects;
@@ -882,9 +874,9 @@ void SqlEditor::checkForSyntaxErrors()
 
     // Marking invalid tokens, like in "SELECT * from test] t" - the "]" token is invalid.
     // Such tokens don't cause parser to fail.
-    foreach (SqliteQueryPtr query, queryParser->getQueries())
+    for (SqliteQueryPtr query : queryParser->getQueries())
     {
-        foreach (TokenPtr token, query->tokens)
+        for (TokenPtr token : query->tokens)
         {
             if (token->type == Token::INVALID)
                 markErrorAt(token->start, token->end, true);
@@ -898,7 +890,7 @@ void SqlEditor::checkForSyntaxErrors()
     }
 
     // Setting new markers when errors were detected
-    foreach (ParserError* error, queryParser->getErrors())
+    for (ParserError* error : queryParser->getErrors())
         markErrorAt(sqlIndex(error->getFrom()), sqlIndex(error->getTo()));
 
     emit errorsChecked(true);
@@ -914,10 +906,10 @@ void SqlEditor::checkForValidObjects()
     Dialect dialect = db->getDialect();
     QList<SqliteStatement::FullObject> fullObjects;
     QString dbName;
-    foreach (SqliteQueryPtr query, queryParser->getQueries())
+    for (SqliteQueryPtr query : queryParser->getQueries())
     {
         fullObjects = query->getContextFullObjects();
-        foreach (const SqliteStatement::FullObject& fullObj, fullObjects)
+        for (const SqliteStatement::FullObject& fullObj : fullObjects)
         {
             dbName = fullObj.database ? stripObjName(fullObj.database->value, dialect) : "main";
             if (!objectsInNamedDb.contains(dbName))
@@ -947,10 +939,8 @@ void SqlEditor::scheduleQueryParser(bool force)
     syntaxValidated = false;
 
     document()->setModified(false);
-    queryParserTimer->stop();
-    queryParserTimer->start();
-
-    scheduleAutoCompletion();
+    queryParserTrigger->schedule();
+    autoCompleteTrigger->schedule();
 }
 
 int SqlEditor::sqlIndex(int idx)
@@ -1111,17 +1101,14 @@ void SqlEditor::loadFromFile()
 
     setFileDialogInitPathByFile(fName);
 
-    QFile file(fName);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+    QString err;
+    QString sql = readFileContents(fName, &err);
+    if (sql.isNull() && !err.isNull())
     {
-        notifyError(tr("Could not open file '%1' for reading: %2").arg(fName).arg(file.errorString()));
+        notifyError(tr("Could not open file '%1' for reading: %2").arg(fName).arg(err));
         return;
     }
 
-    QTextStream stream(&file);
-    stream.setCodec("UTF-8");
-    QString sql = stream.readAll();
-    file.close();
     setPlainText(sql);
 
     loadedFile = fName;
@@ -1573,7 +1560,7 @@ void SqlEditor::setShowLineNumbers(bool value)
 
 void SqlEditor::checkSyntaxNow()
 {
-    queryParserTimer->stop();
+    queryParserTrigger->cancel();
     parseContents();
 }
 
@@ -1634,7 +1621,7 @@ const SqlEditor::DbObject* SqlEditor::getValidObjectForPosition(const QPoint& po
 
 const SqlEditor::DbObject* SqlEditor::getValidObjectForPosition(int position, bool movedLeft)
 {
-    foreach (const DbObject& obj, validDbObjects)
+    for (const DbObject& obj : validDbObjects)
     {
         if ((!movedLeft && position > obj.from && position-1 <= obj.to) ||
             (movedLeft && position >= obj.from && position <= obj.to))

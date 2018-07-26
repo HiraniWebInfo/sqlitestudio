@@ -24,7 +24,7 @@ DbManagerImpl::DbManagerImpl(QObject *parent) :
 DbManagerImpl::~DbManagerImpl()
 {
 //    qDebug() << "DbManagerImpl::~DbManagerImpl()";
-    foreach (Db* db, dbList)
+    for (Db* db : dbList)
     {
         disconnect(db, SIGNAL(disconnected()), this, SLOT(dbDisconnectedSlot()));
         disconnect(db, SIGNAL(aboutToDisconnect(bool&)), this, SLOT(dbAboutToDisconnect(bool&)));
@@ -262,12 +262,16 @@ Db* DbManagerImpl::getByPath(const QString &path)
     return pathToDb.value(pathDir.absolutePath());
 }
 
-Db* DbManagerImpl::createInMemDb()
+Db* DbManagerImpl::createInMemDb(bool pureInit)
 {
     if (!inMemDbCreatorPlugin)
         return nullptr;
 
-    return inMemDbCreatorPlugin->getInstance("", ":memory:", {});
+    QHash<QString, QVariant> opts;
+    if (pureInit)
+        opts[DB_PURE_INIT] = true;
+
+    return inMemDbCreatorPlugin->getInstance("", ":memory:", opts);
 }
 
 bool DbManagerImpl::isTemporary(Db* db)
@@ -342,7 +346,7 @@ void DbManagerImpl::loadInitialDbList()
 {
     QUrl url;
     InvalidDb* db = nullptr;
-    foreach (const Config::CfgDbPtr& cfgDb, CFG->dbList())
+    for (const Config::CfgDbPtr& cfgDb : CFG->dbList())
     {
         db = new InvalidDb(cfgDb->name, cfgDb->path, cfgDb->options);
 

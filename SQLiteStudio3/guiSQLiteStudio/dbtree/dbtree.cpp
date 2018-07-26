@@ -3,6 +3,7 @@
 #include "ui_dbtree.h"
 #include "actionentry.h"
 #include "common/utils_sql.h"
+#include "common/utils.h"
 #include "dbtreemodel.h"
 #include "dialogs/dbdialog.h"
 #include "services/dbmanager.h"
@@ -27,6 +28,8 @@
 #include "themetuner.h"
 #include "dialogs/dbconverterdialog.h"
 #include "querygenerator.h"
+#include "dialogs/execfromfiledialog.h"
+#include "dialogs/fileexecerrorsdialog.h"
 #include <QApplication>
 #include <QClipboard>
 #include <QAction>
@@ -38,6 +41,10 @@
 #include <QKeyEvent>
 #include <QMimeData>
 #include <QDebug>
+#include <QDesktopServices>
+#include <QDir>
+#include <QFileDialog>
+#include <QtConcurrent/QtConcurrentRun>
 
 CFG_KEYS_DEFINE(DbTree)
 QHash<DbTreeItem::Type,QList<DbTreeItem::Type>> DbTree::allowedTypesInside;
@@ -70,10 +77,33 @@ void DbTree::init()
 
     ui->nameFilter->setClearButtonEnabled(true);
 
-    widgetCover = new WidgetCover(this);
-    widgetCover->initWithInterruptContainer();
-    widgetCover->hide();
-    connect(widgetCover, SIGNAL(cancelClicked()), this, SLOT(interrupt()));
+    treeRefreshWidgetCover = new WidgetCover(this);
+    treeRefreshWidgetCover->initWithInterruptContainer();
+    treeRefreshWidgetCover->hide();
+    connect(treeRefreshWidgetCover, SIGNAL(cancelClicked()), this, SLOT(interrupt()));
+
+    fileExecWidgetCover = new WidgetCover(this);
+    fileExecWidgetCover->initWithInterruptContainer();
+    fileExecWidgetCover->displayProgress(100);
+    fileExecWidgetCover->hide();
+    connect(fileExecWidgetCover, &WidgetCover::cancelClicked, [this]()
+    {
+        if (!this->executingQueriesFromFile)
+            return;
+
+        this->executingQueriesFromFile = 0;
+
+        if (this->executingQueriesFromFileDb) // should always be there, but just in case
+        {
+            this->executingQueriesFromFileDb->interrupt();
+            this->executingQueriesFromFileDb->rollback();
+            this->executingQueriesFromFileDb = nullptr;
+            notifyWarn(tr("Execution from file cancelled. Any queries executed so far have been rolled back."));
+        }
+    });
+    connect(this, &DbTree::updateFileExecProgress, this, &DbTree::setFileExecProgress, Qt::QueuedConnection);
+    connect(this, &DbTree::fileExecCoverToBeClosed, this, &DbTree::hideFileExecCover, Qt::QueuedConnection);
+    connect(this, &DbTree::fileExecErrors, this, &DbTree::showFileExecErrors, Qt::QueuedConnection);
 
     treeModel = new DbTreeModel();
     treeModel->setTreeView(ui->treeView);
@@ -107,45 +137,47 @@ void DbTree::createActions()
     createAction(CREATE_GROUP, ICONS.DIRECTORY_ADD, tr("Create a group"), this, SLOT(createGroup()), this);
     createAction(DELETE_GROUP, ICONS.DIRECTORY_DEL, tr("Delete the group"), this, SLOT(deleteGroup()), this);
     createAction(RENAME_GROUP, ICONS.DIRECTORY_EDIT, tr("Rename the group"), this, SLOT(renameGroup()), this);
-    createAction(ADD_DB, ICONS.DATABASE_ADD, tr("Add a database"), this, SLOT(addDb()), this);
-    createAction(EDIT_DB, ICONS.DATABASE_EDIT, tr("Edit the database"), this, SLOT(editDb()), this);
-    createAction(DELETE_DB, ICONS.DATABASE_DEL, tr("Remove the database"), this, SLOT(removeDb()), this);
-    createAction(CONNECT_TO_DB, ICONS.DATABASE_CONNECT, tr("Connect to the database"), this, SLOT(connectToDb()), this);
-    createAction(DISCONNECT_FROM_DB, ICONS.DATABASE_DISCONNECT, tr("Disconnect from the database"), this, SLOT(disconnectFromDb()), this);
+    createAction(ADD_DB, ICONS.DATABASE_ADD, tr("&Add a database"), this, SLOT(addDb()), this);
+    createAction(EDIT_DB, ICONS.DATABASE_EDIT, tr("&Edit the database"), this, SLOT(editDb()), this);
+    createAction(DELETE_DB, ICONS.DATABASE_DEL, tr("&Remove the database"), this, SLOT(removeDb()), this);
+    createAction(CONNECT_TO_DB, ICONS.DATABASE_CONNECT, tr("&Connect to the database"), this, SLOT(connectToDb()), this);
+    createAction(DISCONNECT_FROM_DB, ICONS.DATABASE_DISCONNECT, tr("&Disconnect from the database"), this, SLOT(disconnectFromDb()), this);
     createAction(IMPORT_INTO_DB, ICONS.IMPORT, tr("Import"), this, SLOT(import()), this);
-    createAction(EXPORT_DB, ICONS.DATABASE_EXPORT, tr("Export the database"), this, SLOT(exportDb()), this);
-    createAction(CONVERT_DB, ICONS.CONVERT_DB, tr("Convert database type"), this, SLOT(convertDb()), this);
-    createAction(VACUUM_DB, ICONS.VACUUM_DB, tr("Vacuum"), this, SLOT(vacuumDb()), this);
-    createAction(INTEGRITY_CHECK, ICONS.INTEGRITY_CHECK, tr("Integrity check"), this, SLOT(integrityCheck()), this);
-    createAction(ADD_TABLE, ICONS.TABLE_ADD, tr("Create a table"), this, SLOT(addTable()), this);
-    createAction(EDIT_TABLE, ICONS.TABLE_EDIT, tr("Edit the table"), this, SLOT(editTable()), this);
-    createAction(DEL_TABLE, ICONS.TABLE_DEL, tr("Delete the table"), this, SLOT(delTable()), this);
+    createAction(EXPORT_DB, ICONS.DATABASE_EXPORT, tr("&Export the database"), this, SLOT(exportDb()), this);
+    createAction(CONVERT_DB, ICONS.CONVERT_DB, tr("Con&vert database type"), this, SLOT(convertDb()), this);
+    createAction(VACUUM_DB, ICONS.VACUUM_DB, tr("Vac&uum"), this, SLOT(vacuumDb()), this);
+    createAction(INTEGRITY_CHECK, ICONS.INTEGRITY_CHECK, tr("&Integrity check"), this, SLOT(integrityCheck()), this);
+    createAction(ADD_TABLE, ICONS.TABLE_ADD, tr("Create a &table"), this, SLOT(addTable()), this);
+    createAction(EDIT_TABLE, ICONS.TABLE_EDIT, tr("Edit the t&able"), this, SLOT(editTable()), this);
+    createAction(DEL_TABLE, ICONS.TABLE_DEL, tr("Delete the ta&ble"), this, SLOT(delTable()), this);
     createAction(EXPORT_TABLE, ICONS.TABLE_EXPORT, tr("Export the table"), this, SLOT(exportTable()), this);
     createAction(IMPORT_TABLE, ICONS.TABLE_IMPORT, tr("Import into the table"), this, SLOT(importTable()), this);
     createAction(POPULATE_TABLE, ICONS.TABLE_POPULATE, tr("Populate table"), this, SLOT(populateTable()), this);
     createAction(CREATE_SIMILAR_TABLE, ICONS.TABLE_CREATE_SIMILAR, tr("Create similar table"), this, SLOT(createSimilarTable()), this);
     createAction(RESET_AUTOINCREMENT, ICONS.RESET_AUTOINCREMENT, tr("Reset autoincrement sequence"), this, SLOT(resetAutoincrement()), this);
-    createAction(ADD_INDEX, ICONS.INDEX_ADD, tr("Create an index"), this, SLOT(addIndex()), this);
-    createAction(EDIT_INDEX, ICONS.INDEX_EDIT, tr("Edit the index"), this, SLOT(editIndex()), this);
-    createAction(DEL_INDEX, ICONS.INDEX_DEL, tr("Delete the index"), this, SLOT(delIndex()), this);
-    createAction(ADD_TRIGGER, ICONS.TRIGGER_ADD, tr("Create a trigger"), this, SLOT(addTrigger()), this);
-    createAction(EDIT_TRIGGER, ICONS.TRIGGER_EDIT, tr("Edit the trigger"), this, SLOT(editTrigger()), this);
-    createAction(DEL_TRIGGER, ICONS.TRIGGER_DEL, tr("Delete the trigger"), this, SLOT(delTrigger()), this);
-    createAction(ADD_VIEW, ICONS.VIEW_ADD, tr("Create a view"), this, SLOT(addView()), this);
-    createAction(EDIT_VIEW, ICONS.VIEW_EDIT, tr("Edit the view"), this, SLOT(editView()), this);
-    createAction(DEL_VIEW, ICONS.VIEW_DEL, tr("Delete the view"), this, SLOT(delView()), this);
+    createAction(ADD_INDEX, ICONS.INDEX_ADD, tr("Create an &index"), this, SLOT(addIndex()), this);
+    createAction(EDIT_INDEX, ICONS.INDEX_EDIT, tr("Edit the i&ndex"), this, SLOT(editIndex()), this);
+    createAction(DEL_INDEX, ICONS.INDEX_DEL, tr("Delete the in&dex"), this, SLOT(delIndex()), this);
+    createAction(ADD_TRIGGER, ICONS.TRIGGER_ADD, tr("Create a trig&ger"), this, SLOT(addTrigger()), this);
+    createAction(EDIT_TRIGGER, ICONS.TRIGGER_EDIT, tr("Edit the trigg&er"), this, SLOT(editTrigger()), this);
+    createAction(DEL_TRIGGER, ICONS.TRIGGER_DEL, tr("Delete the trigge&r"), this, SLOT(delTrigger()), this);
+    createAction(ADD_VIEW, ICONS.VIEW_ADD, tr("Create a &view"), this, SLOT(addView()), this);
+    createAction(EDIT_VIEW, ICONS.VIEW_EDIT, tr("Edit the v&iew"), this, SLOT(editView()), this);
+    createAction(DEL_VIEW, ICONS.VIEW_DEL, tr("Delete the vi&ew"), this, SLOT(delView()), this);
     createAction(ADD_COLUMN, ICONS.TABLE_COLUMN_ADD, tr("Add a column"), this, SLOT(addColumn()), this);
     createAction(EDIT_COLUMN, ICONS.TABLE_COLUMN_EDIT, tr("Edit the column"), this, SLOT(editColumn()), this);
     createAction(DEL_COLUMN, ICONS.TABLE_COLUMN_DELETE, tr("Delete the column"), this, SLOT(delColumn()), this);
     createAction(DEL_SELECTED, ICONS.DELETE_SELECTED, tr("Delete selected items"), this, SLOT(deleteSelected()), this);
     createAction(CLEAR_FILTER, tr("Clear filter"), ui->nameFilter, SLOT(clear()), this);
-    createAction(REFRESH_SCHEMAS, ICONS.DATABASE_RELOAD, tr("Refresh all database schemas"), this, SLOT(refreshSchemas()), this);
-    createAction(REFRESH_SCHEMA, ICONS.DATABASE_RELOAD, tr("Refresh selected database schema"), this, SLOT(refreshSchema()), this);
+    createAction(REFRESH_SCHEMAS, ICONS.DATABASE_RELOAD, tr("&Refresh all database schemas"), this, SLOT(refreshSchemas()), this);
+    createAction(REFRESH_SCHEMA, ICONS.DATABASE_RELOAD, tr("Re&fresh selected database schema"), this, SLOT(refreshSchema()), this);
     createAction(ERASE_TABLE_DATA, ICONS.ERASE_TABLE_DATA, tr("Erase table data"), this, SLOT(eraseTableData()), this);
     createAction(GENERATE_SELECT, "SELECT", this, SLOT(generateSelectForTable()), this);
     createAction(GENERATE_INSERT, "INSERT", this, SLOT(generateInsertForTable()), this);
     createAction(GENERATE_UPDATE, "UPDATE", this, SLOT(generateUpdateForTable()), this);
     createAction(GENERATE_DELETE, "DELETE", this, SLOT(generateDeleteForTable()), this);
+    createAction(OPEN_DB_DIRECTORY, ICONS.DIRECTORY_OPEN_WITH_DB, tr("Open file's directory"), this, SLOT(openDbDirectory()), this);
+    createAction(EXEC_SQL_FROM_FILE, ICONS.EXEC_SQL_FROM_FILE, tr("Execute SQL from file"), this, SLOT(execSqlFromFile()), this);
 }
 
 void DbTree::updateActionStates(const QStandardItem *item)
@@ -181,6 +213,10 @@ void DbTree::updateActionStates(const QStandardItem *item)
             }
             else
                 enabled << CONNECT_TO_DB;
+
+            QUrl url = QUrl::fromLocalFile(dbTreeItem->getDb()->getPath());
+            if (url.isValid())
+                enabled << OPEN_DB_DIRECTORY;
         }
 
         if (isDbOpen)
@@ -193,7 +229,7 @@ void DbTree::updateActionStates(const QStandardItem *item)
                     // It's handled outside of "item with db", above
                     break;
                 case DbTreeItem::Type::DB:
-                    enabled << CREATE_GROUP << DELETE_DB << EDIT_DB;
+                    enabled << CREATE_GROUP << DELETE_DB << EDIT_DB << EXEC_SQL_FROM_FILE;
                     break;
                 case DbTreeItem::Type::TABLES:
                     break;
@@ -308,7 +344,7 @@ void DbTree::updateActionStates(const QStandardItem *item)
 
     enabled << REFRESH_SCHEMAS;
 
-    foreach (int action, actionMap.keys())
+    for (int action : actionMap.keys())
         setActionEnabled(action, enabled.contains(action));
 }
 
@@ -380,6 +416,8 @@ void DbTree::setupActionsForMenu(DbTreeItem* currItem, QMenu* contextMenu)
                     actions += ActionEntry(CONVERT_DB);
                     actions += ActionEntry(VACUUM_DB);
                     actions += ActionEntry(INTEGRITY_CHECK);
+                    actions += ActionEntry(EXEC_SQL_FROM_FILE);
+                    actions += ActionEntry(OPEN_DB_DIRECTORY);
                     actions += ActionEntry(_separator);
                 }
                 else
@@ -559,7 +597,7 @@ void DbTree::setupActionsForMenu(DbTreeItem* currItem, QMenu* contextMenu)
     actions += ActionEntry(REFRESH_SCHEMAS);
 
     QMenu* subMenu = nullptr;
-    foreach (ActionEntry actionEntry, actions)
+    for (ActionEntry actionEntry : actions)
     {
         switch (actionEntry.type)
         {
@@ -576,7 +614,7 @@ void DbTree::setupActionsForMenu(DbTreeItem* currItem, QMenu* contextMenu)
             case ActionEntry::Type::SUB_MENU:
             {
                 subMenu = contextMenu->addMenu(actionEntry.subMenuIcon, actionEntry.subMenuLabel);
-                foreach (Action action, actionEntry.actions)
+                for (Action action : actionEntry.actions)
                 {
                     if (action == DbTree::_separator)
                     {
@@ -699,14 +737,14 @@ bool DbTree::areUrlsValidForItem(const QList<QUrl>& srcUrls, const DbTreeItem* d
     return true;
 }
 
-void DbTree::showWidgetCover()
+void DbTree::showRefreshWidgetCover()
 {
-    widgetCover->show();
+    treeRefreshWidgetCover->show();
 }
 
-void DbTree::hideWidgetCover()
+void DbTree::hideRefreshWidgetCover()
 {
-    widgetCover->hide();
+    treeRefreshWidgetCover->hide();
 }
 
 void DbTree::setSelectedItem(DbTreeItem *item)
@@ -862,11 +900,10 @@ void DbTree::filterItemsWithParentInList(QList<DbTreeItem*>& items)
 {
     QMutableListIterator<DbTreeItem*> it(items);
     DbTreeItem* item = nullptr;
-    DbTreeItem* pathItem = nullptr;
     while (it.hasNext())
     {
         item = it.next();
-        foreach (pathItem, item->getPathToRoot().mid(1))
+        for (DbTreeItem* pathItem : item->getPathToRoot().mid(1))
         {
             if (items.contains(pathItem) && pathItem->getType() != DbTreeItem::Type::DIR)
             {
@@ -1628,7 +1665,6 @@ QList<DbTreeItem*> DbTree::getSelectedItems(DbTree::ItemFilterFunc filterFunc)
     return items;
 }
 
-
 void DbTree::deleteItems(const QList<DbTreeItem*>& itemsToDelete)
 {
     QList<DbTreeItem*> items = itemsToDelete;
@@ -1643,7 +1679,7 @@ void DbTree::deleteItems(const QList<DbTreeItem*>& itemsToDelete)
     QStringList databasesToRemove;
     QString itemStr;
     int groupItems = 0;
-    foreach (DbTreeItem* item, items)
+    for (DbTreeItem* item : items)
     {
         itemStr = itemTmp.arg(item->getIcon()->toUrl()).arg(item->text().left(ITEM_TEXT_LIMIT));
 
@@ -1695,7 +1731,7 @@ void DbTree::deleteItems(const QList<DbTreeItem*>& itemsToDelete)
 
 void DbTree::refreshSchemas()
 {
-    foreach (Db* db, DBLIST->getDbList())
+    for (Db* db : DBLIST->getDbList())
         treeModel->refreshSchema(db);
 
     updateActionsForCurrent();
@@ -1715,6 +1751,22 @@ void DbTree::refreshSchema()
 void DbTree::updateActionsForCurrent()
 {
     updateActionStates(ui->treeView->currentItem());
+}
+
+void DbTree::setFileExecProgress(int newValue)
+{
+    fileExecWidgetCover->setProgress(newValue);
+}
+
+void DbTree::hideFileExecCover()
+{
+    fileExecWidgetCover->hide();
+}
+
+void DbTree::showFileExecErrors(const QList<QPair<QString, QString> >& errors, bool rolledBack)
+{
+    FileExecErrorsDialog dialog(errors, rolledBack, MAINWINDOW);
+    dialog.exec();
 }
 
 void DbTree::dbConnected(Db* db)
@@ -1779,6 +1831,166 @@ void DbTree::generateDeleteForTable()
     QueryGenerator generator;
     QString sql = generator.generateDeleteFromTable(db, table);
     MAINWINDOW->openSqlEditor(db, sql);
+}
+
+void DbTree::openDbDirectory()
+{
+    Db* db = getSelectedDb();
+    if (!db)
+        return;
+
+    QFileInfo fi(db->getPath());
+    if (!fi.exists())
+        return;
+
+    QUrl url = QUrl::fromLocalFile(fi.dir().path());
+    if (url.isValid())
+        QDesktopServices::openUrl(url);
+}
+
+void DbTree::execSqlFromFile()
+{
+    Db* db = getSelectedDb();
+    if (!db || !db->isOpen())
+        return;
+
+    ExecFromFileDialog dialog(MAINWINDOW);
+    int res = dialog.exec();
+    if (res != QDialog::Accepted)
+        return;
+
+    if (executingQueriesFromFile)
+        return;
+
+    // Exec file
+    executingQueriesFromFile = 1;
+    executingQueriesFromFileDb = db;
+    fileExecWidgetCover->setProgress(0);
+    fileExecWidgetCover->show();
+    if (!db->begin())
+    {
+        notifyError(tr("Could not execute SQL, because application has failed to start transaction: %1").arg(db->getErrorText()));
+        fileExecWidgetCover->hide();
+        return;
+    }
+
+    QtConcurrent::run(this, &DbTree::execFromFileAsync, dialog.filePath(), db, dialog.ignoreErrors(), dialog.codec());
+}
+
+void DbTree::execFromFileAsync(const QString& path, Db* db, bool ignoreErrors, const QString& codec)
+{
+    // Open file
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+    {
+        notifyError(tr("Could not open file '%1' for reading: %2").arg(path).arg(file.errorString()));
+        executingQueriesFromFile = 0;
+        emit fileExecCoverToBeClosed();
+        return;
+    }
+
+
+    QTextStream stream(&file);
+    stream.setCodec(codec.toLatin1().constData());
+
+    qint64 fileSize = file.size();
+    int attemptedExecutions = 0;
+    int executed = 0;
+    bool ok = true;
+
+    QTime timer;
+    timer.start();
+    QList<QPair<QString, QString>> errors = executeFileQueries(db, stream, executed, attemptedExecutions, ok, ignoreErrors, fileSize);
+    int millis = timer.elapsed();
+    if (executingQueriesFromFile.loadAcquire())
+    {
+        handleFileQueryExecution(db, executed, attemptedExecutions, ok, ignoreErrors, millis);
+        if (!errors.isEmpty())
+            emit fileExecErrors(errors, !ok && !ignoreErrors);
+    }
+
+    file.close();
+    emit fileExecCoverToBeClosed();
+    executingQueriesFromFile = 0;
+}
+
+QList<QPair<QString, QString>> DbTree::executeFileQueries(Db* db, QTextStream& stream, int& executed, int& attemptedExecutions, bool& ok, bool ignoreErrors, qint64 fileSize)
+{
+    QList<QPair<QString, QString>> errors;
+    qint64 pos = 0;
+    QChar c;
+    QString sql;
+    sql.reserve(10000);
+    SqlQueryPtr results;
+    while (!stream.atEnd() && executingQueriesFromFile.loadAcquire())
+    {
+        while (!db->isComplete(sql) && !stream.atEnd())
+        {
+            stream >> c;
+            sql.append(c);
+            while (c != ';' && !stream.atEnd())
+            {
+                stream >> c;
+                sql.append(c);
+            }
+        }
+
+        if (sql.trimmed().isEmpty())
+            continue;
+
+        results = db->exec(sql);
+        attemptedExecutions++;
+        if (results->isError())
+        {
+            ok = false;
+            errors << QPair<QString, QString>(sql, results->getErrorText());
+
+            if (!ignoreErrors)
+                break;
+        }
+        else
+            executed++;
+
+        sql.clear();
+        if (attemptedExecutions % 100 == 0)
+        {
+            pos = stream.device()->pos();
+            emit updateFileExecProgress(static_cast<int>(100 * pos / fileSize));
+        }
+    }
+    return errors;
+}
+
+void DbTree::handleFileQueryExecution(Db* db, int executed, int attemptedExecutions, bool ok, bool ignoreErrors, int millis)
+{
+    bool doCommit = ok ? true : ignoreErrors;
+    if (doCommit)
+    {
+        if (!db->commit())
+        {
+            db->rollback();
+            notifyError(tr("Could not execute SQL, because application has failed to commit the transaction: %1").arg(db->getErrorText()));
+        }
+        else if (!ok) // committed with errors
+        {
+            notifyInfo(tr("Finished executing %1 queries in %2 seconds. %3 were not executed due to errors.")
+                       .arg(executed).arg(millis / 1000.0).arg(attemptedExecutions - executed));
+        }
+        else
+        {
+            notifyInfo(tr("Finished executing %1 queries in %2 seconds.").arg(executed).arg(millis / 1000.0));
+        }
+    }
+    else
+    {
+        db->rollback();
+        notifyError(tr("Could not execute SQL due to error."));
+    }
+}
+
+bool DbTree::execQueryFromFile(Db* db, const QString& sql)
+{
+    return !db->exec(sql)->isError();
 }
 
 void DbTree::setupDefShortcuts()

@@ -29,6 +29,7 @@ class API_EXPORT ConfigImpl : public Config
         bool isMassSaving() const;
         void set(const QString& group, const QString& key, const QVariant& value);
         QVariant get(const QString& group, const QString& key);
+        QVariant get(const QString& group, const QString& key, const QVariant& defaultValue);
         QHash<QString,QVariant> getAll();
 
         bool addDb(const QString& name, const QString& path, const QHash<QString, QVariant> &options);
@@ -56,12 +57,22 @@ class API_EXPORT ConfigImpl : public Config
         qint64 addSqlHistory(const QString& sql, const QString& dbName, int timeSpentMillis, int rowsAffected);
         void updateSqlHistory(qint64 id, const QString& sql, const QString& dbName, int timeSpentMillis, int rowsAffected);
         void clearSqlHistory();
+        void deleteSqlHistory(const QList<qint64>& ids);
         QAbstractItemModel* getSqlHistoryModel();
 
         void addCliHistory(const QString& text);
         void applyCliHistoryLimit();
         void clearCliHistory();
         QStringList getCliHistory() const;
+
+        void addBindParamHistory(const QVector<QPair<QString, QVariant>>& params);
+        void applyBindParamHistoryLimit();
+        QVector<QPair<QString, QVariant>> getBindParamHistory(const QStringList& paramNames) const;
+
+        void addPopulateHistory(const QString& database, const QString& table, int rows, const QHash<QString, QPair<QString, QVariant>>& columnsPluginsConfig);
+        void applyPopulateHistoryLimit();
+        QHash<QString, QPair<QString, QVariant>> getPopulateHistory(const QString& database, const QString& table, int& rows) const;
+        QVariant getPopulateHistory(const QString& pluginName) const;
 
         void addDdlHistory(const QString& queries, const QString& dbName, const QString& dbFile);
         QList<DdlHistoryEntryPtr> getDdlHistoryFor(const QString& dbName, const QString& dbFile, const QDate& date);
@@ -94,15 +105,22 @@ class API_EXPORT ConfigImpl : public Config
         void initTables();
         void initDbFile();
         bool tryInitDbFile(const QPair<QString, bool>& dbPath);
-        QVariant deserializeValue(const QVariant& value);
+        QVariant deserializeValue(const QVariant& value) const;
 
         void asyncAddSqlHistory(qint64 id, const QString& sql, const QString& dbName, int timeSpentMillis, int rowsAffected);
         void asyncUpdateSqlHistory(qint64 id, const QString& sql, const QString& dbName, int timeSpentMillis, int rowsAffected);
         void asyncClearSqlHistory();
+        void asyncDeleteSqlHistory(const QList<qint64> &ids);
 
         void asyncAddCliHistory(const QString& text);
         void asyncApplyCliHistoryLimit();
         void asyncClearCliHistory();
+
+        void asyncAddBindParamHistory(const QVector<QPair<QString, QVariant>>& params);
+        void asyncApplyBindParamHistoryLimit();
+
+        void asyncAddPopulateHistory(const QString& database, const QString& table, int rows, const QHash<QString, QPair<QString, QVariant>>& columnsPluginsConfig);
+        void asyncApplyPopulateHistoryLimit();
 
         void asyncAddDdlHistory(const QString& queries, const QString& dbName, const QString& dbFile);
         void asyncClearDdlHistory();

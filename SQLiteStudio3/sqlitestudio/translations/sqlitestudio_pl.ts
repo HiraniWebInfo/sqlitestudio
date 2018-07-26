@@ -41,7 +41,7 @@
     </message>
     <message>
         <source>Error</source>
-        <translation>Błąd</translation>
+        <translation type="vanished">Błąd</translation>
     </message>
     <message>
         <source>Lists plugins installed in the SQLiteStudio and quits.</source>
@@ -61,11 +61,11 @@
     </message>
     <message>
         <source>Points to the master configuration file. Read manual at wiki page for more details.</source>
-        <translation type="unfinished"></translation>
+        <translation>Wskazuje na główny plik konfiguracyjny. Więcej szczegółów w podręczniku na stronie wiki.</translation>
     </message>
     <message>
         <source>SQLiteStudio settings file</source>
-        <translation type="unfinished"></translation>
+        <translation>Plik ustawień SQLiteStudio</translation>
     </message>
 </context>
 </TS>

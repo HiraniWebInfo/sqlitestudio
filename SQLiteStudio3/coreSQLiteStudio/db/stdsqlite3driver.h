@@ -2,7 +2,7 @@
 #define STDSQLITE3DRIVER_H
 
 #define STD_SQLITE3_DRIVER(Name, Label, Prefix, UppercasePrefix) \
-    struct Name \
+    struct API_EXPORT Name \
     { \
         static_char* label = Label; \
         \
@@ -69,7 +69,9 @@
         static int step(stmt* arg) {return Prefix##sqlite3_step(arg);} \
         static int reset(stmt* arg) {return Prefix##sqlite3_reset(arg);} \
         static int close(handle* arg) {return Prefix##sqlite3_close(arg);} \
+        static void free(void* arg) {return Prefix##sqlite3_free(arg);} \
         static int enable_load_extension(handle* arg1, int arg2) {return Prefix##sqlite3_enable_load_extension(arg1, arg2);} \
+        static int load_extension(handle *arg1, const char *arg2, const char *arg3, char **arg4) {return Prefix##sqlite3_load_extension(arg1, arg2, arg3, arg4);} \
         static void* user_data(context* arg) {return Prefix##sqlite3_user_data(arg);} \
         static void* aggregate_context(context* arg1, int arg2) {return Prefix##sqlite3_aggregate_context(arg1, arg2);} \
         static int collation_needed(handle* a1, void* a2, void(*a3)(void*,handle*,int eTextRep,const char*)) {return Prefix##sqlite3_collation_needed(a1, a2, a3);} \
@@ -80,6 +82,7 @@
             {return Prefix##sqlite3_create_function_v2(a1, a2, a3, a4, a5, a6, a7, a8, a9);} \
         static int create_collation_v2(handle* a1, const char *a2, int a3, void *a4, int(*a5)(void*,int,const void*,int,const void*), void(*a6)(void*)) \
             {return Prefix##sqlite3_create_collation_v2(a1, a2, a3, a4, a5, a6);} \
+        static int complete(const char* arg) {return Prefix##sqlite3_complete(arg);} \
     };
 
 #endif // STDSQLITE3DRIVER_H

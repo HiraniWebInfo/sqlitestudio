@@ -207,7 +207,6 @@ SOURCES += sqlitestudio.cpp \
     plugins/builtinplugin.cpp \
     plugins/scriptingqtdbproxy.cpp \
     plugins/sqlformatterplugin.cpp \
-    services/bugreporter.cpp \
     services/updatemanager.cpp \
     config_builder/cfgmain.cpp \
     config_builder/cfgcategory.cpp \
@@ -229,7 +228,10 @@ SOURCES += sqlitestudio.cpp \
     querygenerator.cpp \
     common/bistrhash.cpp \
     plugins/dbpluginstdfilebase.cpp \
-    common/xmldeserializer.cpp
+    common/xmldeserializer.cpp \
+    services/impl/sqliteextensionmanagerimpl.cpp \
+    common/lazytrigger.cpp \
+    parser/ast/sqliteupsert.cpp
 
 HEADERS += sqlitestudio.h\
         coreSQLiteStudio_global.h \
@@ -399,7 +401,6 @@ HEADERS += sqlitestudio.h\
     plugins/builtinplugin.h \
     plugins/scriptingqtdbproxy.h \
     plugins/codeformatterplugin.h \
-    services/bugreporter.h \
     services/updatemanager.h \
     config_builder/cfgmain.h \
     config_builder/cfgcategory.h \
@@ -428,7 +429,11 @@ HEADERS += sqlitestudio.h\
     common/sortedset.h \
     plugins/dbpluginstdfilebase.h \
     common/xmldeserializer.h \
-    common/valuelocker.h
+    common/valuelocker.h \
+    services/sqliteextensionmanager.h \
+    services/impl/sqliteextensionmanagerimpl.h \
+    common/lazytrigger.h \
+    parser/ast/sqliteupsert.h
 
 unix: {
     target.path = $$LIBDIR
@@ -463,6 +468,9 @@ FORMS += \
 
 RESOURCES += \
     coreSQLiteStudio.qrc
+
+DISTFILES += \
+    licenses/mit.txt
 
 
 

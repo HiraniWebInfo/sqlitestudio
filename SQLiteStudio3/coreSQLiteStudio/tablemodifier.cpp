@@ -89,7 +89,7 @@ void TableModifier::copyDataTo(const QString& targetTable)
     SchemaResolver resolver(db);
     QStringList targetColumns = resolver.getTableColumns(targetTable);
     QStringList colsToCopy;
-    foreach (SqliteCreateTable::Column* column, createTable->columns)
+    for (SqliteCreateTable::Column* column : createTable->columns)
         if (targetColumns.contains(column->name, Qt::CaseInsensitive))
             colsToCopy << wrapObjIfNeeded(column->name, dialect);
 
@@ -299,28 +299,77 @@ bool TableModifier::handleUpdateColumns(SqliteUpdate* update)
 {
     bool modified = false;
     QString lowerName;
+    QVariant colName;
+    QString newName;
+    QStringList newNames;
     QMutableListIterator<SqliteUpdate::ColumnAndValue> it(update->keyValueMap);
     while (it.hasNext())
     {
         it.next();
 
-        // If column was modified, assign new name
-        lowerName = it.value().first.toLower();
-        if (tableColMap.contains(lowerName))
+        colName = it.value().first;
+        if (colName.type() == QVariant::StringList)
         {
-            it.value().first = tableColMap[lowerName];
-            modified = true;
+            // List of columns set to a single value
+            newNames = handleUpdateColumns(colName.toStringList(), modified);
+            if (!modified)
+                continue;
+
+            if (newNames.isEmpty())
+            {
+                it.remove();
+                continue;
+            }
+
+            // If any column was modified, assign new list
+            it.value().first = newNames;
             continue;
         }
 
-        // It wasn't modified, but it's not on existing columns list? Remove it.
-        if (indexOf(existingColumns, it.value().first, Qt::CaseInsensitive) == -1)
+        // Single column case
+        newName = handleUpdateColumn(colName.toString(), modified);
+        if (!modified)
+            continue;
+
+        if (newName.isNull())
         {
             it.remove();
-            modified = true;
+            continue;
         }
+
+        // If column was modified, assign new name
+        it.value().first = newName;
     }
     return modified;
+}
+
+QStringList TableModifier::handleUpdateColumns(const QStringList& colNames, bool& modified)
+{
+    QStringList newNames;
+    for (const QString& colName : colNames)
+        newNames << handleUpdateColumn(colName, modified);
+
+    return newNames;
+}
+
+QString TableModifier::handleUpdateColumn(const QString& colName, bool& modified)
+{
+    // If column was modified, assign new name
+    QString lowerName = colName.toLower();
+    if (tableColMap.contains(lowerName))
+    {
+        modified = true;
+        return tableColMap[lowerName];
+    }
+
+    // It wasn't modified, but it's not on existing columns list? Remove it.
+    if (indexOf(existingColumns, colName, Qt::CaseInsensitive) == -1)
+    {
+        modified = true;
+        return QString();
+    }
+
+    return colName;
 }
 
 QStringList TableModifier::getModifiedViews() const
@@ -354,7 +403,7 @@ void TableModifier::copyDataTo(SqliteCreateTablePtr newCreateTable)
 
     QStringList srcCols;
     QStringList dstCols;
-    foreach (SqliteCreateTable::Column* column, newCreateTable->columns)
+    for (SqliteCreateTable::Column* column : newCreateTable->columns)
     {
         if (!existingColumns.contains(column->originalName))
             continue; // not copying columns that didn't exist before
@@ -370,7 +419,7 @@ void TableModifier::handleIndexes()
 {
     SchemaResolver resolver(db);
     QList<SqliteCreateIndexPtr> parsedIndexesForTable = resolver.getParsedIndexesForTable(originalTable);
-    foreach (SqliteCreateIndexPtr index, parsedIndexesForTable)
+    for (SqliteCreateIndexPtr index : parsedIndexesForTable)
         handleIndex(index);
 }
 
@@ -396,14 +445,18 @@ void TableModifier::handleTriggers()
 {
     SchemaResolver resolver(db);
     QList<SqliteCreateTriggerPtr> parsedTriggersForTable = resolver.getParsedTriggersForTable(originalTable, true);
-    foreach (SqliteCreateTriggerPtr trig, parsedTriggersForTable)
+    for (SqliteCreateTriggerPtr trig : parsedTriggersForTable)
         handleTrigger(trig);
 }
 
 void TableModifier::handleTrigger(SqliteCreateTriggerPtr trigger)
 {
-    trigger->rebuildTokens();
-    QString originalQueryString = trigger->detokenize();
+    // Cloning trigger (to avoid overwritting tokensMap when rebuilding tokens)
+    // and determining query string before it's modified by this method.
+    SqliteCreateTrigger* triggerClone = dynamic_cast<SqliteCreateTrigger*>(trigger->clone());
+    triggerClone->rebuildTokens();
+    QString originalQueryString = triggerClone->detokenize();
+    delete triggerClone;
 
     bool forThisTable = (originalTable.compare(trigger->table, Qt::CaseInsensitive) == 0);
     bool alreadyProcessedOnce = modifiedTriggers.contains(trigger->trigger, Qt::CaseInsensitive);
@@ -465,7 +518,7 @@ void TableModifier::handleTriggerQueries(SqliteCreateTriggerPtr trigger)
 {
     SqliteQuery* newQuery = nullptr;
     QList<SqliteQuery*> newQueries;
-    foreach (SqliteQuery* query, trigger->queries)
+    for (SqliteQuery* query : trigger->queries)
     {
         // The handleTriggerQuery() may delete the input query object. Don't refer to it later.
         newQuery = handleTriggerQuery(query, trigger->trigger, trigger->table);
@@ -481,7 +534,7 @@ void TableModifier::handleViews()
 {
     SchemaResolver resolver(db);
     QList<SqliteCreateViewPtr> parsedViewsForTable = resolver.getParsedViewsForTable(originalTable);
-    foreach (SqliteCreateViewPtr view, parsedViewsForTable)
+    for (SqliteCreateViewPtr view : parsedViewsForTable)
         handleView(view);
 }
 
@@ -550,7 +603,7 @@ SqliteSelect* TableModifier::handleSelect(SqliteSelect* select, const QString& t
         resolvedTables = tablesAsNameHash(selectResolver.resolveTables(core));
 
         tableTokens = core->getContextTableTokens(false);
-        foreach (TokenPtr token, tableTokens)
+        for (TokenPtr token : tableTokens)
         {
             if (token->value.compare(originalTable, Qt::CaseInsensitive) != 0)
                 continue;
@@ -623,7 +676,7 @@ bool TableModifier::isTableAliasUsedForColumn(const TokenPtr &token, const StrHa
     if (table.tableAlias.isNull())
         return false;
 
-    if (table.tableAlias.compare(token->value), Qt::CaseInsensitive != 0)
+    if (table.tableAlias.compare(token->value, Qt::CaseInsensitive) != 0)
         return false;
 
     // If the table token is mentioned in FROM clause, it's not a subject for aliased usage, cuase it defines alias, not uses it.
@@ -708,7 +761,7 @@ bool TableModifier::handleSubSelects(SqliteStatement* stmt, const QString& trigT
     bool embedSelectsOk = true;
     QList<SqliteSelect*> selects = stmt->getAllTypedStatements<SqliteSelect>();
     SqliteExpr* expr = nullptr;
-    foreach (SqliteSelect* select, selects)
+    for (SqliteSelect* select : selects)
     {
         if (select->coreSelects.size() >= 1 && select->coreSelects.first()->valuesMode)
         {
@@ -842,7 +895,7 @@ void TableModifier::simpleHandleIndexes()
 {
     SchemaResolver resolver(db);
     QList<SqliteCreateIndexPtr> parsedIndexesForTable = resolver.getParsedIndexesForTable(originalTable);
-    foreach (SqliteCreateIndexPtr index, parsedIndexesForTable)
+    for (SqliteCreateIndexPtr index : parsedIndexesForTable)
         sqls << index->detokenize();
 }
 
@@ -855,7 +908,7 @@ void TableModifier::simpleHandleTriggers(const QString& view)
     else
         parsedTriggers = resolver.getParsedTriggersForTable(originalTable);
 
-    foreach (SqliteCreateTriggerPtr trig, parsedTriggers)
+    for (SqliteCreateTriggerPtr trig : parsedTriggers)
         sqls << trig->detokenize();
 }
 

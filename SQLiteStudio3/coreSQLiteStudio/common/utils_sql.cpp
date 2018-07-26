@@ -12,7 +12,8 @@
 #include <QMetaType>
 
 QString invalidIdCharacters = "[]()\"'@*.,+-=/%&|:; \t\n<>";
-QHash<NameWrapper,QPair<QChar,QChar> > wrapperChars;
+QHash<NameWrapper,QPair<QChar,QChar>> wrapperChars;
+QHash<NameWrapper,QPair<QChar,bool>> wrapperEscapedEnding;
 QList<NameWrapper> sqlite3Wrappers;
 QList<NameWrapper> sqlite2Wrappers;
 
@@ -22,6 +23,11 @@ void initUtilsSql()
     wrapperChars[NameWrapper::QUOTE] = QPair<QChar,QChar>('\'', '\'');
     wrapperChars[NameWrapper::BACK_QUOTE] = QPair<QChar,QChar>('`', '`');
     wrapperChars[NameWrapper::DOUBLE_QUOTE] = QPair<QChar,QChar>('"', '"');
+
+    wrapperEscapedEnding[NameWrapper::BRACKET] = QPair<QChar,bool>(']', false);
+    wrapperEscapedEnding[NameWrapper::QUOTE] = QPair<QChar,bool>('\'', true);
+    wrapperEscapedEnding[NameWrapper::BACK_QUOTE] = QPair<QChar,bool>('`', true);
+    wrapperEscapedEnding[NameWrapper::DOUBLE_QUOTE] = QPair<QChar,bool>('"', true);
 
     sqlite3Wrappers << NameWrapper::DOUBLE_QUOTE
                     << NameWrapper::BRACKET
@@ -129,7 +135,7 @@ QPair<QChar,QChar> getQuoteCharacter(QString& obj, Dialect dialect, NameWrapper 
     }
 
     QPair<QChar,QChar> wrapChars;
-    foreach (NameWrapper wrapper, wrappers)
+    for (NameWrapper wrapper : wrappers)
     {
         wrapChars = wrapperChars[wrapper];
         if (obj.indexOf(wrapChars.first) > -1)
@@ -277,6 +283,23 @@ bool isObjWrapped(const QString& str, Dialect dialect)
     return getObjWrapper(str, dialect) != NameWrapper::null;
 }
 
+bool doesNotContainEndingWrapperChar(const QString& str, NameWrapper wrapper)
+{
+    QString innerPart = str.mid(1, str.length() - 2);
+    const QChar& endingChar = wrapperEscapedEnding[wrapper].first;
+    bool escapingAllowed = wrapperEscapedEnding[wrapper].second;
+    int idx = -1;
+    int lastIdx = innerPart.length() - 1;
+    while ((idx = innerPart.indexOf(endingChar, idx + 1)) > -1)
+    {
+        if (idx == lastIdx || !escapingAllowed || innerPart[idx + 1] != endingChar)
+            return false;
+
+        idx++; // we had occurrence, but it was escaped, so we need to skip the second (escape) char
+    }
+    return true;
+}
+
 NameWrapper getObjWrapper(const QString& str, Dialect dialect)
 {
     if (str.isEmpty())
@@ -289,10 +312,10 @@ NameWrapper getObjWrapper(const QString& str, Dialect dialect)
     else
         wrappers = sqlite3Wrappers;
 
-    foreach (NameWrapper wrapper, wrappers)
+    for (NameWrapper wrapper : wrappers)
     {
         QPair<QChar,QChar> chars = wrapperChars[wrapper];
-        if (str[0] == chars.first && str[str.length()-1] == chars.second)
+        if (str[0] == chars.first && str[str.length()-1] == chars.second && doesNotContainEndingWrapperChar(str, wrapper))
             return wrapper;
     }
     return NameWrapper::null;
@@ -306,7 +329,7 @@ bool isWrapperChar(const QChar& c, Dialect dialect)
     else
         wrappers = sqlite3Wrappers;
 
-    foreach (NameWrapper wrapper, wrappers)
+    for (NameWrapper wrapper : wrappers)
     {
         QPair<QChar,QChar> chars = wrapperChars[wrapper];
         if (c == chars.first || c == chars.second)
@@ -389,7 +412,7 @@ QList<TokenList> splitQueries(const TokenList& tokenizedQuery, bool* complete)
     int createTriggerMeter = 0;
     bool insideTrigger = false;
     bool completeQuery = false;
-    foreach (const TokenPtr& token, tokenizedQuery)
+    for (const TokenPtr& token : tokenizedQuery)
     {
         value = token->value.toUpper();
         if (!token->isWhitespace())
@@ -556,7 +579,7 @@ QStringList splitQueries(const QString& sql, Dialect dialect, bool keepEmptyQuer
 
     QString query;
     QStringList queries;
-    foreach (const TokenList& queryTokens, tokenizedQueries)
+    for (const TokenList& queryTokens : tokenizedQueries)
     {
         query = queryTokens.detokenize();
         if (keepEmptyQueries || (!query.trimmed().isEmpty() && query.trimmed() != ";"))
@@ -627,10 +650,10 @@ QList<QueryWithParamNames> getQueriesWithParamNames(const QString& query, Dialec
 
     QString queryStr;
     QStringList paramNames;
-    foreach (const TokenList& tokens, queries)
+    for (const TokenList& tokens : queries)
     {
         paramNames.clear();
-        foreach (const TokenPtr& token, tokens.filter(Token::BIND_PARAM))
+        for (const TokenPtr& token : tokens.filter(Token::BIND_PARAM))
             paramNames << token->value;
 
         queryStr = tokens.detokenize().trimmed();
@@ -648,7 +671,7 @@ QList<QueryWithParamCount> getQueriesWithParamCount(const QString& query, Dialec
     QList<TokenList> queries = splitQueries(allTokens);
 
     QString queryStr;
-    foreach (const TokenList& tokens, queries)
+    for (const TokenList& tokens : queries)
     {
         queryStr = tokens.detokenize().trimmed();
         if (!queryStr.isEmpty())
@@ -663,7 +686,7 @@ QueryWithParamNames getQueryWithParamNames(const QString& query, Dialect dialect
     TokenList allTokens = Lexer::tokenize(query, dialect);
 
     QStringList paramNames;
-    foreach (const TokenPtr& token, allTokens.filter(Token::BIND_PARAM))
+    for (const TokenPtr& token : allTokens.filter(Token::BIND_PARAM))
         paramNames << token->value;
 
     return QueryWithParamNames(query, paramNames);

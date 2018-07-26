@@ -156,7 +156,7 @@ void TableForeignKeyPanel::updateColumnState(int rowIdx, bool tableSelected)
     if (!wasEnabled && check->isEnabled())
     {
         // Automatically set matching column
-        int idx = fkColumnsModel.stringList().indexOf(check->text());
+        int idx = fkColumnsModel.stringList().indexOf(check->property(UI_PROP_COLUMN).toString());
         if (idx > -1)
             combo->setCurrentIndex(idx);
     }
@@ -191,7 +191,7 @@ void TableForeignKeyPanel::buildColumns()
 
     SqliteCreateTable* createTable = dynamic_cast<SqliteCreateTable*>(constraint->parentStatement());
     int row = 0;
-    foreach (SqliteCreateTable::Column* column, createTable->columns)
+    for (SqliteCreateTable::Column* column : createTable->columns)
         buildColumn(column, row++);
 }
 
@@ -200,6 +200,7 @@ void TableForeignKeyPanel::buildColumn(SqliteCreateTable::Column* column, int ro
     int col = 0;
 
     QCheckBox* check = new QCheckBox(column->name);
+    check->setProperty(UI_PROP_COLUMN, column->name);
     columnsLayout->addWidget(check, row, col++);
     columnSignalMapping->setMapping(check, row);
     connect(check, SIGNAL(toggled(bool)), columnSignalMapping, SLOT(map()));
@@ -228,7 +229,7 @@ void TableForeignKeyPanel::readConstraint()
     if (!constr->foreignKey->foreignTable.isNull())
         ui->fkTableCombo->setCurrentText(constr->foreignKey->foreignTable);
 
-    foreach (SqliteForeignKey::Condition* condition, constr->foreignKey->conditions)
+    for (SqliteForeignKey::Condition* condition : constr->foreignKey->conditions)
         readCondition(condition);
 
     ui->deferrableCombo->setCurrentText(sqliteDeferrable(constr->foreignKey->deferrable));
@@ -245,10 +246,9 @@ void TableForeignKeyPanel::readConstraint()
     int idx;
     QCheckBox* check = nullptr;
     QComboBox* combo = nullptr;
-    SqliteIndexedColumn* localCol = nullptr;
     SqliteIndexedColumn* foreignCol = nullptr;
     int i = 0;
-    foreach (localCol, constr->indexedColumns)
+    for (SqliteIndexedColumn* localCol : constr->indexedColumns)
     {
         // Foreign col
         if (i < constr->foreignKey->indexedColumns.size())
@@ -312,7 +312,7 @@ void TableForeignKeyPanel::storeConfiguration()
     if (constr->foreignKey)
         delete constr->foreignKey;
 
-    foreach (SqliteIndexedColumn* idxCol, constr->indexedColumns)
+    for (SqliteIndexedColumn* idxCol : constr->indexedColumns)
         delete idxCol;
 
     constr->indexedColumns.clear();
@@ -334,7 +334,7 @@ void TableForeignKeyPanel::storeConfiguration()
         if (!check->isChecked())
             continue;
 
-        idxCol = new SqliteIndexedColumn(check->text());
+        idxCol = new SqliteIndexedColumn(check->property(UI_PROP_COLUMN).toString());
         idxCol->setParent(constr);
         constr->indexedColumns << idxCol;
 
@@ -407,7 +407,7 @@ int TableForeignKeyPanel::getColumnIndex(const QString& colName)
     {
         item = columnsLayout->itemAtPosition(i, 0)->widget();
         cb = qobject_cast<QCheckBox*>(item);
-        if (cb->text().compare(colName, Qt::CaseInsensitive) == 0)
+        if (cb->property(UI_PROP_COLUMN).toString().compare(colName, Qt::CaseInsensitive) == 0)
             return i;
     }
     return -1;

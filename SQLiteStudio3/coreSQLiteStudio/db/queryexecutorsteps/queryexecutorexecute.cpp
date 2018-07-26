@@ -23,7 +23,7 @@ bool QueryExecutorExecute::exec()
 void QueryExecutorExecute::provideResultColumns(SqlQueryPtr results)
 {
     QueryExecutor::ResultColumnPtr resCol;
-    foreach (const QString& colName, results->getColumnNames())
+    for (const QString& colName : results->getColumnNames())
     {
         resCol = QueryExecutor::ResultColumnPtr::create();
         resCol->displayName = colName;
@@ -124,8 +124,8 @@ void QueryExecutorExecute::handleFailResult(SqlQueryPtr results)
 QHash<QString, QVariant> QueryExecutorExecute::getBindParamsForQuery(SqliteQueryPtr query)
 {
     QHash<QString, QVariant> queryParams;
-    QStringList bindParams = query->tokens.filter(Token::BIND_PARAM).toStringList();
-    foreach (const QString& bindParam, bindParams)
+    QStringList bindParams = query->tokens.filter(Token::BIND_PARAM).toValueList();
+    for (const QString& bindParam : bindParams)
     {
         if (context->queryParameters.contains(bindParam))
             queryParams.insert(bindParam, context->queryParameters[bindParam]);

@@ -4,6 +4,7 @@
 #include "services/notifymanager.h"
 #include "sqlitestudio.h"
 #include "db/dbsqlite3.h"
+#include "common/utils.h"
 #include <QtGlobal>
 #include <QDebug>
 #include <QList>
@@ -94,17 +95,22 @@ bool ConfigImpl::isMassSaving() const
 
 void ConfigImpl::set(const QString &group, const QString &key, const QVariant &value)
 {
-    QByteArray bytes;
-    QDataStream stream(&bytes, QIODevice::WriteOnly);
-    stream << value;
-
-    db->exec("INSERT OR REPLACE INTO settings VALUES (?, ?, ?)", {group, key, bytes});
+    db->exec("INSERT OR REPLACE INTO settings VALUES (?, ?, ?)", {group, key, serializeToBytes(value)});
 }
 
 QVariant ConfigImpl::get(const QString &group, const QString &key)
 {
     SqlQueryPtr results = db->exec("SELECT value FROM settings WHERE [group] = ? AND [key] = ?", {group, key});
     return deserializeValue(results->getSingleCell());
+}
+
+QVariant ConfigImpl::get(const QString &group, const QString &key, const QVariant &defaultValue)
+{
+    QVariant value = get(group, key);
+    if (!value.isValid() || value.isNull())
+        return defaultValue;
+
+    return value;
 }
 
 QHash<QString,QVariant> ConfigImpl::getAll()
@@ -225,7 +231,7 @@ void ConfigImpl::storeGroups(const QList<DbGroupPtr>& groups)
     db->begin();
     db->exec("DELETE FROM groups");
 
-    foreach (const DbGroupPtr& group, groups)
+    for (const DbGroupPtr& group : groups)
         storeGroup(group);
 
     db->commit();
@@ -241,7 +247,7 @@ void ConfigImpl::storeGroup(const ConfigImpl::DbGroupPtr &group, qint64 parentId
                                     {group->name, group->order, parent, group->open, group->referencedDbName});
 
     qint64 newParentId = results->getRegularInsertRowId();
-    foreach (const DbGroupPtr& childGroup, group->childs)
+    for (const DbGroupPtr& childGroup : group->childs)
         storeGroup(childGroup, newParentId);
 }
 
@@ -304,6 +310,11 @@ void ConfigImpl::clearSqlHistory()
     QtConcurrent::run(this, &ConfigImpl::asyncClearSqlHistory);
 }
 
+void ConfigImpl::deleteSqlHistory(const QList<qint64>& ids)
+{
+    QtConcurrent::run(this, &ConfigImpl::asyncDeleteSqlHistory, ids);
+}
+
 QAbstractItemModel* ConfigImpl::getSqlHistoryModel()
 {
     if (!sqlHistoryModel)
@@ -336,6 +347,122 @@ QStringList ConfigImpl::getCliHistory() const
         qWarning() << "Error while getting CLI history:" << db->getErrorText();
 
     return results->columnAsList<QString>("text");
+}
+
+void ConfigImpl::addBindParamHistory(const QVector<QPair<QString, QVariant> >& params)
+{
+    QtConcurrent::run(this, &ConfigImpl::asyncAddBindParamHistory, params);
+}
+
+void ConfigImpl::applyBindParamHistoryLimit()
+{
+    QtConcurrent::run(this, &ConfigImpl::asyncApplyBindParamHistoryLimit);
+}
+
+QVector<QPair<QString, QVariant>> ConfigImpl::getBindParamHistory(const QStringList& paramNames) const
+{
+    static_qstring(directQuery, "SELECT id FROM bind_params WHERE pattern = ? ORDER BY id DESC");
+    static_qstring(paramsByIdQuery, "SELECT name, value FROM bind_param_values WHERE bind_params_id = ? ORDER BY position");
+    static_qstring(singleParamQuery, "SELECT value FROM bind_param_values WHERE %1 = ? ORDER BY id DESC LIMIT 1;");
+    static_qstring(singleParamName, "name");
+    static_qstring(singleParamPosition, "position");
+
+    QVector<QPair<QString, QVariant>> bindParams;
+    bindParams.reserve(paramNames.size());
+
+    SqlQueryPtr results = db->exec(directQuery, {paramNames.join(",")});
+    if (results->isError())
+    {
+        qWarning() << "Error while getting BindParams (1):" << db->getErrorText();
+        return bindParams;
+    }
+
+    // Got an exact match? Extract values and return.
+    QVariant exactMatch = results->getSingleCell();
+    if (!exactMatch.isNull())
+    {
+        results = db->exec(paramsByIdQuery, {exactMatch.toLongLong()});
+        if (results->isError())
+        {
+            qWarning() << "Error while getting BindParams (2):" << db->getErrorText();
+        }
+        else
+        {
+            for (const SqlResultsRowPtr& row : results->getAll())
+                bindParams << QPair<QString, QVariant>(row->value("name").toString(), row->value("value"));
+        }
+        return bindParams;
+    }
+
+    // No exact match. Will look for values one by one using param name and position.
+    int position = 0;
+    for (const QString& bindParam : paramNames)
+    {
+        if (bindParam == "?")
+            results = db->exec(singleParamQuery.arg(singleParamPosition), {position});
+        else
+            results = db->exec(singleParamQuery.arg(singleParamName), {bindParam});
+
+        bindParams << QPair<QString, QVariant>(bindParam, results->getSingleCell());
+        position++;
+    }
+    return bindParams;
+}
+
+void ConfigImpl::addPopulateHistory(const QString& database, const QString& table, int rows, const QHash<QString, QPair<QString, QVariant> >& columnsPluginsConfig)
+{
+    QtConcurrent::run(this, &ConfigImpl::asyncAddPopulateHistory, database, table, rows, columnsPluginsConfig);
+}
+
+void ConfigImpl::applyPopulateHistoryLimit()
+{
+    QtConcurrent::run(this, &ConfigImpl::asyncApplyPopulateHistoryLimit);
+}
+
+QHash<QString, QPair<QString, QVariant>> ConfigImpl::getPopulateHistory(const QString& database, const QString& table, int& rows) const
+{
+    static_qstring(initialQuery, "SELECT id, rows FROM populate_history WHERE [database] = ? AND [table] = ? ORDER BY id DESC LIMIT 1");
+    static_qstring(columnsQuery, "SELECT column_name, plugin_name, plugin_config FROM populate_column_history WHERE populate_history_id = ?");
+
+    QHash<QString, QPair<QString, QVariant>> historyEntry;
+    SqlQueryPtr results = db->exec(initialQuery, {database, table});
+    if (results->isError())
+    {
+        qWarning() << "Error while getting Populating history entry (1):" << db->getErrorText();
+        return historyEntry;
+    }
+
+    if (!results->hasNext())
+        return historyEntry;
+
+    SqlResultsRowPtr row = results->next();
+    qint64 historyEntryId = row->value("id").toLongLong();
+    rows = row->value("rows").toInt();
+
+    results = db->exec(columnsQuery, {historyEntryId});
+    QVariant value;
+    while (results->hasNext())
+    {
+        row = results->next();
+        value = deserializeValue(row->value("plugin_config"));
+        historyEntry[row->value("column_name").toString()] = QPair<QString, QVariant>(row->value("plugin_name").toString(), value);
+    }
+
+    return historyEntry;
+}
+
+QVariant ConfigImpl::getPopulateHistory(const QString& pluginName) const
+{
+    static_qstring(columnsQuery, "SELECT plugin_config FROM populate_column_history WHERE plugin_name = ? ORDER BY id DESC LiMIT 1");
+
+    SqlQueryPtr results = db->exec(columnsQuery, {pluginName});
+    if (results->isError())
+    {
+        qWarning() << "Error while getting Populating history entry (2):" << db->getErrorText();
+        return QVariant();
+    }
+
+    return deserializeValue(results->getSingleCell());
 }
 
 void ConfigImpl::addDdlHistory(const QString& queries, const QString& dbName, const QString& dbFile)
@@ -503,9 +630,9 @@ QString ConfigImpl::getPortableConfigPath()
         if (!file.isDir() || !file.isReadable() || !file.isWritable())
             continue;
 
-        foreach (file, dir.entryInfoList())
+        for (const QFileInfo& entryFile : dir.entryInfoList())
         {
-            if (!file.isReadable() || !file.isWritable())
+            if (!entryFile.isReadable() || !entryFile.isWritable())
                 continue;
         }
 
@@ -522,8 +649,7 @@ void ConfigImpl::initTables()
 
     if (!tables.contains("version"))
     {
-        QString table;
-        foreach (table, tables)
+        for (const QString& table : tables)
             db->exec("DROP TABLE "+table);
 
         tables.clear();
@@ -551,6 +677,34 @@ void ConfigImpl::initTables()
 
     if (!tables.contains("cli_history"))
         db->exec("CREATE TABLE cli_history (id INTEGER PRIMARY KEY AUTOINCREMENT, text TEXT)");
+
+    if (!tables.contains("reports_history"))
+        db->exec("CREATE TABLE reports_history (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp INTEGER, feature_request BOOLEAN, title TEXT, url TEXT)");
+
+    if (!tables.contains("bind_params"))
+    {
+        db->exec("CREATE TABLE bind_params (id INTEGER PRIMARY KEY AUTOINCREMENT, pattern TEXT NOT NULL)");
+        db->exec("CREATE INDEX bind_params_patt_idx ON bind_params (pattern);");
+    }
+
+    if (!tables.contains("bind_param_values"))
+    {
+        db->exec("CREATE TABLE bind_param_values (id INTEGER PRIMARY KEY AUTOINCREMENT, bind_params_id INTEGER REFERENCES bind_params (id) "
+                 "ON DELETE CASCADE ON UPDATE CASCADE NOT NULL, position INTEGER NOT NULL, name TEXT NOT NULL, value)");
+        db->exec("CREATE INDEX bind_param_values_fk_idx ON bind_param_values (bind_params_id);");
+    }
+
+    if (!tables.contains("populate_history"))
+    {
+        db->exec("CREATE TABLE populate_history (id INTEGER PRIMARY KEY AUTOINCREMENT, [database] TEXT NOT NULL, [table] TEXT NOT NULL, rows INTEGER NOT NULL)");
+    }
+
+    if (!tables.contains("populate_column_history"))
+    {
+        db->exec("CREATE TABLE populate_column_history (id INTEGER PRIMARY KEY AUTOINCREMENT, populate_history_id INTEGER REFERENCES populate_history (id) "
+                 "ON DELETE CASCADE ON UPDATE CASCADE NOT NULL, column_name TEXT NOT NULL, plugin_name TEXT NOT NULL, plugin_config BLOB)");
+        db->exec("CREATE INDEX populate_plugin_history_idx ON populate_column_history (plugin_name)");
+    }
 
     if (!tables.contains("reports_history"))
         db->exec("CREATE TABLE reports_history (id INTEGER PRIMARY KEY AUTOINCREMENT, timestamp INTEGER, feature_request BOOLEAN, title TEXT, url TEXT)");
@@ -646,19 +800,13 @@ bool ConfigImpl::tryInitDbFile(const QPair<QString, bool> &dbPath)
     return true;
 }
 
-QVariant ConfigImpl::deserializeValue(const QVariant &value)
+QVariant ConfigImpl::deserializeValue(const QVariant &value) const
 {
     if (!value.isValid())
         return QVariant();
 
     QByteArray bytes = value.toByteArray();
-    if (bytes.isNull())
-        return QVariant();
-
-    QVariant deserializedValue;
-    QDataStream stream(bytes);
-    stream >> deserializedValue;
-    return deserializedValue;
+    return deserializeFromBytes(bytes);
 }
 
 void ConfigImpl::asyncAddSqlHistory(qint64 id, const QString& sql, const QString& dbName, int timeSpentMillis, int rowsAffected)
@@ -709,6 +857,23 @@ void ConfigImpl::asyncClearSqlHistory()
     emit sqlHistoryRefreshNeeded();
 }
 
+void ConfigImpl::asyncDeleteSqlHistory(const QList<qint64>& ids)
+{
+    if (!db->begin()) {
+        NOTIFY_MANAGER->warn(tr("Could not start database transaction for deleting SQL history, therefore it's not deleted."));
+        return;
+    }
+    for (const qint64& id : ids)
+        db->exec("DELETE FROM sqleditor_history WHERE id = ?", id);
+
+    if (!db->commit()) {
+        NOTIFY_MANAGER->warn(tr("Could not commit database transaction for deleting SQL history, therefore it's not deleted."));
+        db->rollback();
+        return;
+    }
+    emit sqlHistoryRefreshNeeded();
+}
+
 void ConfigImpl::asyncAddCliHistory(const QString& text)
 {
     static_qstring(insertQuery, "INSERT INTO cli_history (text) VALUES (?)");
@@ -722,7 +887,7 @@ void ConfigImpl::asyncAddCliHistory(const QString& text)
 
 void ConfigImpl::asyncApplyCliHistoryLimit()
 {
-    static_qstring(limitQuery, "DELETE FROM cli_history WHERE id >= (SELECT id FROM cli_history ORDER BY id LIMIT 1 OFFSET %1)");
+    static_qstring(limitQuery, "DELETE FROM cli_history WHERE id <= (SELECT id FROM cli_history ORDER BY id DESC LIMIT 1 OFFSET %1)");
 
     SqlQueryPtr results = db->exec(limitQuery.arg(CFG_CORE.Console.HistorySize.get()));
     if (results->isError())
@@ -736,6 +901,105 @@ void ConfigImpl::asyncClearCliHistory()
     SqlQueryPtr results = db->exec(clearQuery);
     if (results->isError())
         qWarning() << "Error while clearing CLI history:" << db->getErrorText();
+}
+
+void ConfigImpl::asyncAddBindParamHistory(const QVector<QPair<QString, QVariant> >& params)
+{
+    static_qstring(insertParamsQuery, "INSERT INTO bind_params (pattern) VALUES (?)");
+    static_qstring(insertValuesQuery, "INSERT INTO bind_param_values (bind_params_id, position, name, value) VALUES (?, ?, ?, ?)");
+
+    if (!db->begin())
+    {
+        qWarning() << "Failed to store BindParam cache, because could not begin SQL transaction. Details:" << db->getErrorText();
+        return;
+    }
+
+    QStringList paramNames;
+    for (const QPair<QString, QVariant>& paramPair : params)
+        paramNames << paramPair.first;
+
+    SqlQueryPtr results = db->exec(insertParamsQuery, {paramNames.join(",")});
+    RowId rowId = results->getInsertRowId();
+    qint64 bindParamsId = rowId["ROWID"].toLongLong();
+
+    int position = 0;
+    for (const QPair<QString, QVariant>& paramPair : params)
+    {
+        results = db->exec(insertValuesQuery, {bindParamsId, position++, paramPair.first, paramPair.second});
+        if (results->isError())
+        {
+            qWarning() << "Failed to store BindParam cache, due to SQL error:" << db->getErrorText();
+            db->rollback();
+            return;
+        }
+    }
+
+    if (!db->commit())
+    {
+        qWarning() << "Failed to store BindParam cache, because could not commit SQL transaction. Details:" << db->getErrorText();
+        db->rollback();
+    }
+
+    asyncApplyBindParamHistoryLimit();
+}
+
+void ConfigImpl::asyncApplyBindParamHistoryLimit()
+{
+    static_qstring(findBindParamIdQuery, "SELECT bind_params_id FROM bind_param_values ORDER BY id DESC LIMIT 1 OFFSET %1");
+    static_qstring(limitBindParamsQuery, "DELETE FROM bind_params WHERE id <= ?"); // will cascade with FK to bind_param_values
+
+    SqlQueryPtr results = db->exec(findBindParamIdQuery.arg(CFG_CORE.General.BindParamsCacheSize.get()));
+    if (results->isError())
+        qWarning() << "Error while limiting BindParam history (step 1):" << db->getErrorText();
+
+    qint64 bindParamId = results->getSingleCell().toLongLong();
+    results = db->exec(limitBindParamsQuery, {bindParamId});
+    if (results->isError())
+        qWarning() << "Error while limiting BindParam history (step 2):" << db->getErrorText();
+}
+
+void ConfigImpl::asyncAddPopulateHistory(const QString& database, const QString& table, int rows, const QHash<QString, QPair<QString, QVariant>>& columnsPluginsConfig)
+{
+    static_qstring(insertQuery, "INSERT INTO populate_history ([database], [table], rows) VALUES (?, ?, ?)");
+    static_qstring(insertColumnQuery, "INSERT INTO populate_column_history (populate_history_id, column_name, plugin_name, plugin_config) VALUES (?, ?, ?, ?)");
+
+    if (!db->begin())
+    {
+        qWarning() << "Failed to store Populating history entry, because could not begin SQL transaction. Details:" << db->getErrorText();
+        return;
+    }
+
+    SqlQueryPtr results = db->exec(insertQuery, {database, table, rows});
+    RowId rowId = results->getInsertRowId();
+    qint64 populateHistoryId = rowId["ROWID"].toLongLong();
+
+    for (QHash<QString, QPair<QString, QVariant>>::const_iterator colIt = columnsPluginsConfig.begin(); colIt != columnsPluginsConfig.end(); colIt++)
+    {
+        results = db->exec(insertColumnQuery, {populateHistoryId, colIt.key(), colIt.value().first, serializeToBytes(colIt.value().second)});
+        if (results->isError())
+        {
+            qWarning() << "Failed to store Populating history entry, due to SQL error:" << db->getErrorText();
+            db->rollback();
+            return;
+        }
+    }
+
+    if (!db->commit())
+    {
+        qWarning() << "Failed to store Populating history entry, because could not commit SQL transaction. Details:" << db->getErrorText();
+        db->rollback();
+    }
+
+    asyncApplyPopulateHistoryLimit();
+}
+
+void ConfigImpl::asyncApplyPopulateHistoryLimit()
+{
+    static_qstring(limitQuery, "DELETE FROM populate_history WHERE id <= (SELECT id FROM populate_history ORDER BY id DESC LIMIT 1 OFFSET %1)");
+
+    SqlQueryPtr results = db->exec(limitQuery.arg(CFG_CORE.General.PopulateHistorySize.get()));
+    if (results->isError())
+        qWarning() << "Error while limiting Populating history:" << db->getErrorText();
 }
 
 void ConfigImpl::asyncAddDdlHistory(const QString& queries, const QString& dbName, const QString& dbFile)
@@ -799,7 +1063,12 @@ void ConfigImpl::mergeMasterConfig()
     if (masterConfigFile.isEmpty())
         return;
 
-    qInfo() << "Updating settings from master configuration file: " << masterConfigFile;
+#if QT_VERSION >= 0x050500
+    qInfo()
+#else
+    qDebug()
+#endif
+        << "Updating settings from master configuration file: " << masterConfigFile;
 
     Db* masterDb = new DbSqlite3("SQLiteStudio master settings", masterConfigFile, {{DB_PURE_INIT, true}});
     if (!masterDb->open())

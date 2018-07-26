@@ -108,6 +108,9 @@ QueryExecutor::ResultColumnPtr QueryExecutorColumns::getResultColumn(const Selec
         if (resolvedColumn.flags & SelectResolver::FROM_DISTINCT_SELECT)
             resultColumn->editionForbiddenReasons << QueryExecutor::ColumnEditionForbiddenReason::DISTINCT_RESULTS;
 
+        if (resolvedColumn.flags & SelectResolver::FROM_CTE_SELECT)
+            resultColumn->editionForbiddenReasons << QueryExecutor::ColumnEditionForbiddenReason::COMM_TAB_EXPR;
+
         resultColumn->database = resolvedColumn.originalDatabase;
         resultColumn->table = resolvedColumn.table;
         resultColumn->column = resolvedColumn.column;
@@ -200,7 +203,7 @@ QString QueryExecutorColumns::resolveAttachedDatabases(const QString &dbName)
 
 bool QueryExecutorColumns::isRowIdColumnAlias(const QString& alias)
 {
-    foreach (QueryExecutor::ResultRowIdColumnPtr rowIdColumn, context->rowIdColumns)
+    for (QueryExecutor::ResultRowIdColumnPtr rowIdColumn : context->rowIdColumns)
     {
         if (rowIdColumn->queryExecutorAliasToColumn.keys().contains(alias))
             return true;

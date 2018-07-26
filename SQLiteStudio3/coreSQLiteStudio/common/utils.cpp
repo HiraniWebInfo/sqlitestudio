@@ -311,7 +311,7 @@ QStringList tokenizeArgs(const QString& str)
 QStringList prefixEach(const QString& prefix, const QStringList& list)
 {
     QStringList result;
-    foreach (const QString& item, list)
+    for (const QString& item : list)
         result << (prefix + item);
 
     return result;
@@ -385,7 +385,7 @@ QString longest(const QStringList& strList)
 {
     int max = 0;
     QString result;
-    foreach (const QString str, strList)
+    for (const QString str : strList)
     {
         if (str.size() > max)
         {
@@ -400,7 +400,7 @@ QString shortest(const QStringList& strList)
 {
     int max = INT_MAX;
     QString result;
-    foreach (const QString str, strList)
+    for (const QString str : strList)
     {
         if (str.size() < max)
         {
@@ -421,7 +421,7 @@ QString longestCommonPart(const QStringList& strList)
    for (int i = 0; i < first.length(); i++)
    {
        common += first[i];
-       foreach (const QString& str, strList)
+       for (const QString& str : strList)
        {
            if (!str.startsWith(common))
                return common.left(i);
@@ -434,7 +434,7 @@ QStringList applyMargin(const QString& str, int margin)
 {
     QStringList lines;
     QString line;
-    foreach (QString word, str.split(" "))
+    for (QString word : str.split(" "))
     {
         if (((line + word).length() + 1) > margin)
         {
@@ -694,9 +694,11 @@ QString getOsString()
         case QSysInfo::WV_WINDOWS8_1:
             os += " 8.1";
             break;
+#if QT_VERSION >= 0x050500
         case QSysInfo::WV_WINDOWS10:
             os += " 10";
         break;
+#endif
         case QSysInfo::WV_32s:
         case QSysInfo::WV_95:
         case QSysInfo::WV_98:
@@ -710,7 +712,9 @@ QString getOsString()
         case QSysInfo::WV_CE_5:
         case QSysInfo::WV_CE_6:
         case QSysInfo::WV_CE_based:
+#if QT_VERSION >= 0x050500
         case QSysInfo::WV_None:
+#endif
             break;
     }
 #elif defined(Q_OS_LINUX)
@@ -819,6 +823,42 @@ bool isHex(const QString& str)
     return ok;
 }
 
+bool isHex(const QChar& c)
+{
+    return isHex(c.toLatin1());
+}
+
+bool isHex(const char c)
+{
+    switch (c)
+    {
+        case 'a':
+        case 'A':
+        case 'b':
+        case 'B':
+        case 'c':
+        case 'C':
+        case 'd':
+        case 'D':
+        case 'e':
+        case 'E':
+        case 'f':
+        case 'F':
+        case '0':
+        case '1':
+        case '2':
+        case '3':
+        case '4':
+        case '5':
+        case '6':
+        case '7':
+        case '8':
+        case '9':
+            return true;
+    }
+    return false;
+}
+
 QString formatVersion(int version)
 {
     int majorVer = version / 10000;
@@ -919,9 +959,18 @@ QStringList concat(const QList<QStringList>& list)
     return result;
 }
 
+
 QString doubleToString(const QVariant& val)
 {
-    return val.toString();
+    QString str = val.toString();
+    if (str.contains("e"))
+        str = QString::number(val.toDouble(), 'f', 14).remove(QRegExp("0*$"));
+    else if (!str.contains('.'))
+        str += ".0";
+    else if (str.mid(str.indexOf('.') + 1).length() > 14)
+        str = QString::number(val.toDouble(), 'f', 14).remove(QRegExp("0*$"));
+
+    return str;
 }
 
 void sortWithReferenceList(QList<QString>& listToSort, const QList<QString>& referenceList, Qt::CaseSensitivity cs)
@@ -943,4 +992,42 @@ void sortWithReferenceList(QList<QString>& listToSort, const QList<QString>& ref
 
         return (idx1 > idx2);
     });
+}
+
+QByteArray serializeToBytes(const QVariant& value)
+{
+    QByteArray bytes;
+    QDataStream stream(&bytes, QIODevice::WriteOnly);
+    stream << value;
+    return bytes;
+}
+
+QVariant deserializeFromBytes(const QByteArray& bytes)
+{
+    if (bytes.isNull())
+        return QVariant();
+
+    QVariant deserializedValue;
+    QDataStream stream(bytes);
+    stream >> deserializedValue;
+    return deserializedValue;
+}
+
+QString readFileContents(const QString& path, QString* err)
+{
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
+    {
+        if (err)
+            *err = QObject::tr("Could not open file '%1' for reading: %2").arg(path).arg(file.errorString());
+
+        return QString();
+    }
+
+    QTextStream stream(&file);
+    stream.setCodec("UTF-8");
+    QString contents = stream.readAll();
+    file.close();
+
+    return contents;
 }

@@ -253,7 +253,7 @@ struct API_EXPORT Token
     /**
      * @brief Literal value of the token, captured directly from the query.
      */
-    QString value = QString::null;
+    QString value;
 
     /**
      * @brief Start position (first character index) of the token in the query.
@@ -333,6 +333,12 @@ class API_EXPORT TokenList : public QList<TokenPtr>
          * Tokens are serialized with Token::toString().
          */
         QStringList toStringList() const;
+
+        /**
+         * @brief Converts list of tokens into list of their values.
+         * @return List of tokens values.
+         */
+        QStringList toValueList() const;
 
         /**
          * @brief Provides index of first occurrence of the token in the list.

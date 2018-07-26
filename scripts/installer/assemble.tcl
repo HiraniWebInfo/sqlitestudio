@@ -1,6 +1,6 @@
 #!/usr/bin/env tclsh
 
-# tclsh assemble.tcl c:/tmp/installer
+# tclsh assemble.tcl c:/tmp/installer [--repo]
 
 package require platform
 lassign [split [platform::generic] -] OS ARCH
@@ -302,8 +302,15 @@ proc copyConfig {targetDir} {
 }
 
 proc createOutputBinary {targetDir} {
-	puts "Creating installer binary: $::output"
-	exec binarycreator -f -p $targetDir/packages -c $targetDir/config/config.xml $::output
+	if {$::OS == "macosx"} {
+	    puts "Creating installer binary: $::output.dmg"
+	    exec binarycreator -f -p $targetDir/packages -c $targetDir/config/config.xml $::output.dmg
+	    puts "Creating installer binary: $::output"
+	    exec binarycreator -f -p $targetDir/packages -c $targetDir/config/config.xml $::output
+	} else {
+	    puts "Creating installer binary: $::output"
+	    exec binarycreator -f -p $targetDir/packages -c $targetDir/config/config.xml $::output
+	}
 }
 
 proc createOutputRepo {targetDir} {

@@ -8,8 +8,18 @@ MultiEditorWidget::MultiEditorWidget(QWidget *parent) :
 void MultiEditorWidget::installEventFilter(QObject* filterObj)
 {
     QObject::installEventFilter(filterObj);
-    foreach (QWidget* w, getNoScrollWidgets())
+    for (QWidget* w : getNoScrollWidgets())
         w->installEventFilter(filterObj);
+}
+
+void MultiEditorWidget::setTabLabel(const QString& value)
+{
+    tabLabel = value;
+}
+
+QString MultiEditorWidget::getTabLabel()
+{
+    return tabLabel;
 }
 
 bool MultiEditorWidget::isUpToDate() const

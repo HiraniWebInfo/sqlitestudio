@@ -9,6 +9,7 @@
 #include "windows/functionseditor.h"
 #include "windows/collationseditor.h"
 #include "windows/ddlhistorywindow.h"
+#include "windows/sqliteextensioneditor.h"
 #include "mdiarea.h"
 #include "statusfield.h"
 #include "uiconfig.h"
@@ -32,8 +33,6 @@
 #include "services/dbmanager.h"
 #include "services/updatemanager.h"
 #include "dialogs/aboutdialog.h"
-#include "dialogs/bugdialog.h"
-#include "windows/bugreporthistorywindow.h"
 #include "dialogs/newversiondialog.h"
 #include "dialogs/quitconfirmdialog.h"
 #include "common/widgetcover.h"
@@ -47,6 +46,8 @@
 #include <QInputDialog>
 #include <QProgressBar>
 #include <QLabel>
+#include <QStyle>
+#include <QApplication>
 
 CFG_KEYS_DEFINE(MainWindow)
 MainWindow* MainWindow::instance = nullptr;
@@ -229,42 +230,43 @@ void MainWindow::closeEvent(QCloseEvent* event)
 
 void MainWindow::createActions()
 {
-    createAction(OPEN_SQL_EDITOR, ICONS.OPEN_SQL_EDITOR, tr("Open SQL editor"), this, SLOT(openSqlEditorSlot()), ui->mainToolBar);
-    createAction(OPEN_DDL_HISTORY, ICONS.DDL_HISTORY, tr("Open DDL history"), this, SLOT(openDdlHistorySlot()), ui->mainToolBar);
-    createAction(OPEN_FUNCTION_EDITOR, ICONS.FUNCTION, tr("Open SQL functions editor"), this, SLOT(openFunctionEditorSlot()), ui->mainToolBar);
-    createAction(OPEN_COLLATION_EDITOR, ICONS.CONSTRAINT_COLLATION, tr("Open collations editor"), this, SLOT(openCollationEditorSlot()), ui->mainToolBar);
-    createAction(IMPORT, ICONS.IMPORT, tr("Import"), this, SLOT(importAnything()), ui->mainToolBar);
-    createAction(EXPORT, ICONS.EXPORT, tr("Export"), this, SLOT(exportAnything()), ui->mainToolBar);
+    createAction(OPEN_SQL_EDITOR, ICONS.OPEN_SQL_EDITOR, tr("Open SQL &editor"), this, SLOT(openSqlEditorSlot()), ui->mainToolBar);
+    createAction(OPEN_DDL_HISTORY, ICONS.DDL_HISTORY, tr("Open DDL &history"), this, SLOT(openDdlHistorySlot()), ui->mainToolBar);
+    createAction(OPEN_FUNCTION_EDITOR, ICONS.FUNCTION, tr("Open SQL &functions editor"), this, SLOT(openFunctionEditorSlot()), ui->mainToolBar);
+    createAction(OPEN_COLLATION_EDITOR, ICONS.CONSTRAINT_COLLATION, tr("Open &collations editor"), this, SLOT(openCollationEditorSlot()), ui->mainToolBar);
+    createAction(OPEN_EXTENSION_MANAGER, ICONS.EXTENSION, tr("Open ex&tension manager"), this, SLOT(openExtensionManagerSlot()), ui->mainToolBar);
+    createAction(IMPORT, ICONS.IMPORT, tr("&Import"), this, SLOT(importAnything()), ui->mainToolBar);
+    createAction(EXPORT, ICONS.EXPORT, tr("E&xport"), this, SLOT(exportAnything()), ui->mainToolBar);
     ui->mainToolBar->addSeparator();
-    createAction(OPEN_CONFIG, ICONS.CONFIGURE, tr("Open configuration dialog"), this, SLOT(openConfig()), ui->mainToolBar);
+    createAction(OPEN_CONFIG, ICONS.CONFIGURE, tr("Open confi&guration dialog"), this, SLOT(openConfig()), ui->mainToolBar);
 
-    createAction(MDI_TILE, ICONS.WIN_TILE, tr("Tile windows"), ui->mdiArea, SLOT(tileSubWindows()), ui->viewToolbar);
-    createAction(MDI_TILE_HORIZONTAL, ICONS.WIN_TILE_HORIZONTAL, tr("Tile windows horizontally"), ui->mdiArea, SLOT(tileHorizontally()), ui->viewToolbar);
-    createAction(MDI_TILE_VERTICAL, ICONS.WIN_TILE_VERTICAL, tr("Tile windows vertically"), ui->mdiArea, SLOT(tileVertically()), ui->viewToolbar);
-    createAction(MDI_CASCADE, ICONS.WIN_CASCADE, tr("Cascade windows"), ui->mdiArea, SLOT(cascadeSubWindows()), ui->viewToolbar);
+    createAction(MDI_TILE, ICONS.WIN_TILE, tr("&Tile windows"), ui->mdiArea, SLOT(tileSubWindows()), ui->viewToolbar);
+    createAction(MDI_TILE_HORIZONTAL, ICONS.WIN_TILE_HORIZONTAL, tr("Tile windows &horizontally"), ui->mdiArea, SLOT(tileHorizontally()), ui->viewToolbar);
+    createAction(MDI_TILE_VERTICAL, ICONS.WIN_TILE_VERTICAL, tr("Tile windows &vertically"), ui->mdiArea, SLOT(tileVertically()), ui->viewToolbar);
+    createAction(MDI_CASCADE, ICONS.WIN_CASCADE, tr("&Cascade windows"), ui->mdiArea, SLOT(cascadeSubWindows()), ui->viewToolbar);
     createAction(NEXT_TASK, tr("Next window"), ui->taskBar, SLOT(nextTask()), this);
     createAction(PREV_TASK, tr("Previous window"), ui->taskBar, SLOT(prevTask()), this);
     createAction(HIDE_STATUS_FIELD, tr("Hide status field"), this, SLOT(hideStatusField()), this);
 
-    createAction(CLOSE_WINDOW, ICONS.WIN_CLOSE, tr("Close selected window"), this, SLOT(closeSelectedWindow()), this);
-    createAction(CLOSE_OTHER_WINDOWS, ICONS.WIN_CLOSE_OTHER, tr("Close all windows but selected"), this, SLOT(closeAllWindowsButSelected()), this);
-    createAction(CLOSE_ALL_WINDOWS, ICONS.WIN_CLOSE_ALL, tr("Close all windows"), this, SLOT(closeAllWindows()), this);
-    createAction(RESTORE_WINDOW, ICONS.WIN_RESTORE, tr("Restore recently closed window"), this, SLOT(restoreLastClosedWindow()), this);
-    createAction(RENAME_WINDOW, ICONS.WIN_RENAME, tr("Rename selected window"), this, SLOT(renameWindow()), this);
+    createAction(CLOSE_WINDOW, ICONS.WIN_CLOSE, tr("Close selected &window"), this, SLOT(closeSelectedWindow()), this);
+    createAction(CLOSE_OTHER_WINDOWS, ICONS.WIN_CLOSE_OTHER, tr("Close all windows &but selected"), this, SLOT(closeAllWindowsButSelected()), this);
+    createAction(CLOSE_ALL_WINDOWS, ICONS.WIN_CLOSE_ALL, tr("Close &all windows"), this, SLOT(closeAllWindows()), this);
+    createAction(RESTORE_WINDOW, ICONS.WIN_RESTORE, tr("Re&store recently closed window"), this, SLOT(restoreLastClosedWindow()), this);
+    createAction(RENAME_WINDOW, ICONS.WIN_RENAME, tr("&Rename selected window"), this, SLOT(renameWindow()), this);
 
     createAction(OPEN_DEBUG_CONSOLE, tr("Open Debug Console"), this, SLOT(openDebugConsole()), this);
     createAction(OPEN_CSS_CONSOLE, tr("Open CSS Console"), this, SLOT(openCssConsole()), this);
-    createAction(REPORT_BUG, ICONS.BUG, tr("Report a bug"), this, SLOT(reportBug()), this);
-    createAction(FEATURE_REQUEST, ICONS.FEATURE_REQUEST, tr("Propose a new feature"), this, SLOT(requestFeature()), this);
-    createAction(ABOUT, ICONS.SQLITESTUDIO_APP16, tr("About"), this, SLOT(aboutSqlitestudio()), this);
-    createAction(LICENSES, ICONS.LICENSES, tr("Licenses"), this, SLOT(licenses()), this);
-    createAction(HOMEPAGE, ICONS.HOMEPAGE, tr("Open home page"), this, SLOT(homepage()), this);
-    createAction(FORUM, ICONS.OPEN_FORUM, tr("Open forum page"), this, SLOT(forum()), this);
-    createAction(USER_MANUAL, ICONS.USER_MANUAL, tr("User Manual"), this, SLOT(userManual()), this);
-    createAction(SQLITE_DOCS, ICONS.SQLITE_DOCS, tr("SQLite documentation"), this, SLOT(sqliteDocs()), this);
-    createAction(BUG_REPORT_HISTORY, ICONS.BUG_LIST, tr("Report history"), this, SLOT(reportHistory()), this);
+    createAction(REPORT_BUG, ICONS.BUG, tr("Report a &bug"), this, SLOT(reportBug()), this);
+    createAction(FEATURE_REQUEST, ICONS.FEATURE_REQUEST, tr("Propose a new &feature"), this, SLOT(requestFeature()), this);
+    createAction(ABOUT, ICONS.SQLITESTUDIO_APP16, tr("&About"), this, SLOT(aboutSqlitestudio()), this);
+    createAction(LICENSES, ICONS.LICENSES, tr("&Licenses"), this, SLOT(licenses()), this);
+    createAction(HOMEPAGE, ICONS.HOMEPAGE, tr("Open home &page"), this, SLOT(homepage()), this);
+    createAction(FORUM, ICONS.OPEN_FORUM, tr("Open fo&rum page"), this, SLOT(forum()), this);
+    createAction(USER_MANUAL, ICONS.USER_MANUAL, tr("User &Manual"), this, SLOT(userManual()), this);
+    createAction(SQLITE_DOCS, ICONS.SQLITE_DOCS, tr("SQLite &documentation"), this, SLOT(sqliteDocs()), this);
+    createAction(BUG_REPORT_HISTORY, ICONS.BUG_LIST, tr("Bugs and feature &requests"), this, SLOT(reportHistory()), this);
 #ifdef PORTABLE_CONFIG
-    createAction(CHECK_FOR_UPDATES, ICONS.GET_UPDATE, tr("Check for updates"), this, SLOT(checkForUpdates()), this);
+    createAction(CHECK_FOR_UPDATES, ICONS.GET_UPDATE, tr("Check for &updates"), this, SLOT(checkForUpdates()), this);
 #endif
 
     actionMap[ABOUT]->setMenuRole(QAction::AboutRole);
@@ -302,7 +304,7 @@ void MainWindow::initMenuBar()
 {
     // Database menu
     dbMenu = new QMenu(this);
-    dbMenu->setTitle(tr("Database", "menubar"));
+    dbMenu->setTitle(tr("&Database", "menubar"));
     menuBar()->addMenu(dbMenu);
 
     dbMenu->addAction(dbTree->getAction(DbTree::CONNECT_TO_DB));
@@ -322,7 +324,7 @@ void MainWindow::initMenuBar()
 
     // Structure menu
     structMenu = new QMenu(this);
-    structMenu->setTitle(tr("Structure", "menubar"));
+    structMenu->setTitle(tr("&Structure", "menubar"));
     menuBar()->addMenu(structMenu);
 
     structMenu->addAction(dbTree->getAction(DbTree::ADD_TABLE));
@@ -343,7 +345,7 @@ void MainWindow::initMenuBar()
 
     // View menu
     viewMenu = createPopupMenu();
-    viewMenu->setTitle(tr("View", "menubar"));
+    viewMenu->setTitle(tr("&View", "menubar"));
     menuBar()->addMenu(viewMenu);
 
     mdiMenu = new QMenu(viewMenu);
@@ -368,13 +370,14 @@ void MainWindow::initMenuBar()
 
     // Tools menu
     toolsMenu = new QMenu(this);
-    toolsMenu->setTitle(tr("Tools", "menubar"));
+    toolsMenu->setTitle(tr("&Tools", "menubar"));
     menuBar()->addMenu(toolsMenu);
 
     toolsMenu->addAction(actionMap[OPEN_SQL_EDITOR]);
     toolsMenu->addAction(actionMap[OPEN_DDL_HISTORY]);
     toolsMenu->addAction(actionMap[OPEN_FUNCTION_EDITOR]);
     toolsMenu->addAction(actionMap[OPEN_COLLATION_EDITOR]);
+    toolsMenu->addAction(actionMap[OPEN_EXTENSION_MANAGER]);
     toolsMenu->addAction(actionMap[IMPORT]);
     toolsMenu->addAction(actionMap[EXPORT]);
     toolsMenu->addSeparator();
@@ -382,7 +385,7 @@ void MainWindow::initMenuBar()
 
     // Help menu
     sqlitestudioMenu = new QMenu(this);
-    sqlitestudioMenu->setTitle(tr("Help"));
+    sqlitestudioMenu->setTitle(tr("&Help"));
     menuBar()->addMenu(sqlitestudioMenu);
     if (isDebugEnabled() && isDebugConsoleEnabled())
     {
@@ -422,7 +425,7 @@ void MainWindow::saveSession(MdiWindow* currWindow)
     if (CFG_UI.General.RestoreSession.get())
     {
         QList<QVariant> windowSessions;
-        foreach (MdiWindow* window, ui->mdiArea->getWindows())
+        for (MdiWindow* window : ui->mdiArea->getWindows())
             if (window->restoreSessionNextTime())
                 windowSessions << window->saveSession();
 
@@ -490,7 +493,7 @@ void MainWindow::restoreWindowSessions(const QList<QVariant>& windowSessions)
     if (windowSessions.size() == 0)
         return;
 
-    foreach (const QVariant& winSession, windowSessions)
+    for (const QVariant& winSession : windowSessions)
         restoreWindowSession(winSession);
 }
 
@@ -572,7 +575,7 @@ EditorWindow* MainWindow::openSqlEditor(Db* dbToSet, const QString& sql)
 
 void MainWindow::closeNonSessionWindows()
 {
-    foreach (MdiWindow* window, ui->mdiArea->getWindows())
+    for (MdiWindow* window : ui->mdiArea->getWindows())
         if (!window->restoreSessionNextTime())
             window->close();
 }
@@ -635,6 +638,11 @@ void MainWindow::openFunctionEditorSlot()
 void MainWindow::openCollationEditorSlot()
 {
     openCollationEditor();
+}
+
+void MainWindow::openExtensionManagerSlot()
+{
+    openExtensionManager();
 }
 
 void MainWindow::exportAnything()
@@ -711,15 +719,12 @@ void MainWindow::openCssConsole()
 
 void MainWindow::reportBug()
 {
-    BugDialog dialog(this);
-    dialog.exec();
+    QDesktopServices::openUrl(QUrl(SQLITESTUDIO->getNewIssuePage()));
 }
 
 void MainWindow::requestFeature()
 {
-    BugDialog dialog(this);
-    dialog.setFeatureRequestMode(true);
-    dialog.exec();
+    QDesktopServices::openUrl(QUrl(SQLITESTUDIO->getNewIssuePage()));
 }
 
 void MainWindow::aboutSqlitestudio()
@@ -756,7 +761,7 @@ void MainWindow::sqliteDocs()
 
 void MainWindow::reportHistory()
 {
-    openReportHistory();
+    QDesktopServices::openUrl(QUrl(SQLITESTUDIO->getIssuesPage()));
 }
 
 void MainWindow::statusFieldLinkClicked(const QString& link)
@@ -811,6 +816,16 @@ void MainWindow::updateCornerDocking()
     }
 }
 
+void MainWindow::messageFromSecondaryInstance(quint32 instanceId, QByteArray message)
+{
+    UNUSED(instanceId);
+    QApplication::setActiveWindow(this);
+    raise();
+    QString dbToOpen = deserializeFromBytes(message).toString();
+    if (!dbToOpen.isNull())
+        openDb(dbToOpen);
+}
+
 DdlHistoryWindow* MainWindow::openDdlHistory()
 {
     return openMdiWindow<DdlHistoryWindow>();
@@ -826,9 +841,9 @@ CollationsEditor* MainWindow::openCollationEditor()
     return openMdiWindow<CollationsEditor>();
 }
 
-BugReportHistoryWindow* MainWindow::openReportHistory()
+SqliteExtensionEditor* MainWindow::openExtensionManager()
 {
-    return openMdiWindow<BugReportHistoryWindow>();
+    return openMdiWindow<SqliteExtensionEditor>();
 }
 
 void MainWindow::fixFonts()

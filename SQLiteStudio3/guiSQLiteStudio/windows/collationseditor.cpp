@@ -106,11 +106,11 @@ void CollationsEditor::init()
     connect(CFG_UI.Fonts.SqlEditor, SIGNAL(changed(QVariant)), this, SLOT(changeFont(QVariant)));
 
     // Language plugins
-    foreach (ScriptingPlugin* plugin, PLUGINS->getLoadedPlugins<ScriptingPlugin>())
+    for (ScriptingPlugin* plugin : PLUGINS->getLoadedPlugins<ScriptingPlugin>())
         ui->langCombo->addItem(plugin->getLanguage());
 
     // Syntax highlighting plugins
-    foreach (SyntaxHighlighterPlugin* plugin, PLUGINS->getLoadedPlugins<SyntaxHighlighterPlugin>())
+    for (SyntaxHighlighterPlugin* plugin : PLUGINS->getLoadedPlugins<SyntaxHighlighterPlugin>())
         highlighterPlugins[plugin->getLanguageName()] = plugin;
 
     updateState();
@@ -156,7 +156,7 @@ void CollationsEditor::collationSelected(int row)
         ui->selectedDatabasesRadio->setChecked(true);
 
     updatesForSelection = false;
-    currentModified = false;
+    currentModified = model->isModified(row);
 
     updateCurrentCollationState();
 }
@@ -190,7 +190,7 @@ void CollationsEditor::setFont(const QFont& font)
 
 void CollationsEditor::help()
 {
-    static const QString url = QStringLiteral("http://wiki.sqlitestudio.pl/index.php/User_Manual#Custom_collations");
+    static const QString url = QStringLiteral("https://github.com/pawelsalawa/sqlitestudio/wiki/User_Manual#custom-collations");
     QDesktopServices::openUrl(QUrl(url, QUrl::StrictMode));
 }
 

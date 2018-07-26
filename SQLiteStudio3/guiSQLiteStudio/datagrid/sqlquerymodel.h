@@ -42,6 +42,7 @@ class GUI_API_EXPORT SqlQueryModel : public QStandardItemModel
         QString getQuery() const;
         void setQuery(const QString &value);
         void setExplainMode(bool explain);
+        void setParams(const QHash<QString, QVariant>& params);
         Db* getDb() const;
         void setDb(Db* value);
         qint64 getExecutionTime();
@@ -82,7 +83,7 @@ class GUI_API_EXPORT SqlQueryModel : public QStandardItemModel
         virtual Features features() const;
 
         /**
-         * @brief applySqlFilter
+         * @brief Request for applying SQL expression filtering on a dataset.
          * @param value Filter expression.
          * Default implementation does nothing. Working implementation (i.e. for a table)
          * should set the query to temporary value which respects given filter and reload the data.
@@ -91,7 +92,7 @@ class GUI_API_EXPORT SqlQueryModel : public QStandardItemModel
         virtual void applySqlFilter(const QString& value);
 
         /**
-         * @brief applyStringFilter
+         * @brief Request for applying "LIKE" filtering on a dataset.
          * @param value Filter expression.
          * Default implementation does nothing. Working implementation (i.e. for a table)
          * should set the query to temporary value which respects given filter and reload the data.
@@ -100,13 +101,29 @@ class GUI_API_EXPORT SqlQueryModel : public QStandardItemModel
         virtual void applyStringFilter(const QString& value);
 
         /**
-         * @brief applyStringFilter
+         * @brief Request for applying Regular Expression filtering on a dataset.
          * @param value Filter expression.
          * Default implementation does nothing. Working implementation (i.e. for a table)
          * should set the query to temporary value which respects given filter and reload the data.
          * Filter passed to this method is meant to be treated as regular expression to be matched in any column.
          */
         virtual void applyRegExpFilter(const QString& value);
+
+        /**
+         * @brief Request for applying "LIKE" filtering on a dataset.
+         * @param values Filter expressions per column.
+         * This is the same as applyStringFilter(const QString&), but is used for per-column filtering,
+         * when user enters filtering expressions for each column sparately.
+         */
+        virtual void applyStringFilter(const QStringList& values);
+
+        /**
+         * @brief Request for applying Regular Expression filtering on a dataset.
+         * @param values Filter expressions per column.
+         * This is the same as applyRegExpFilter(const QString&), but is used for per-column filtering,
+         * when user enters filtering expressions for each column sparately.
+         */
+        virtual void applyRegExpFilter(const QStringList& values);
 
         /**
          * @brief resetFilter
@@ -164,7 +181,7 @@ class GUI_API_EXPORT SqlQueryModel : public QStandardItemModel
     protected:
         class CommitUpdateQueryBuilder : public RowIdConditionBuilder
         {
-        public:
+            public:
                 void clear();
 
                 void setDatabase(const QString& database);
@@ -318,6 +335,7 @@ class GUI_API_EXPORT SqlQueryModel : public QStandardItemModel
         int getRowsPerPage() const;
 
         QString query;
+        QHash<QString, QVariant> queryParams;
         bool explain = false;
         bool simpleExecutionMode = false;
 
@@ -398,6 +416,16 @@ class GUI_API_EXPORT SqlQueryModel : public QStandardItemModel
          * -1 to not apply hard limit (use user configured row limit), any other value is the limit.
          */
         int hardRowLimit = -1;
+
+        /**
+         * @brief Limit for rows in case there is many columns.
+         *
+         * -1 to not apply the limit. This is set during reading columns. If there is many columns,
+         * we need to keep maximum limit of rows at pace, so we don't overuse the RAM.
+         * This limit is soft, meaning it applies only if it's smaller than configured limit or hardRowLimit.
+         * If any of two limits mentioned above are smaller, this limit will not come to the play.
+         */
+        int columnRatioBasedRowLimit = -1;
 
         int resultColumnCount = 0;
 

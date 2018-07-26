@@ -210,9 +210,17 @@ QString TokenList::toString() const
 QStringList TokenList::toStringList() const
 {
     QStringList strList;
-    TokenPtr t;
-    foreach (t, *this)
+    for (const TokenPtr& t : *this)
         strList << t->toString();
+
+    return strList;
+}
+
+QStringList TokenList::toValueList() const
+{
+    QStringList strList;
+    for (const TokenPtr& t : *this)
+        strList << t->value;
 
     return strList;
 }
@@ -301,7 +309,7 @@ TokenPtr TokenList::findLast(const QString& value, Qt::CaseSensitivity caseSensi
 
 TokenPtr TokenList::atCursorPosition(quint64 cursorPosition) const
 {
-    foreach (TokenPtr token, *this)
+    for (TokenPtr token : *this)
     {
         if (token->getRange().contains(cursorPosition))
             return token;
@@ -311,7 +319,7 @@ TokenPtr TokenList::atCursorPosition(quint64 cursorPosition) const
 
 void TokenList::insert(int i, const TokenList &list)
 {
-    foreach (TokenPtr token, list)
+    for (TokenPtr token : list)
         QList<TokenPtr>::insert(i++, token);
 }
 
@@ -483,7 +491,7 @@ TokenList& TokenList::trim(Token::Type type, const QString& alsoTrim)
 TokenList TokenList::filter(Token::Type type) const
 {
     TokenList filtered;
-    foreach (TokenPtr token, *this)
+    for (TokenPtr token : *this)
         if (token->type == type)
             filtered << token;
 
@@ -493,7 +501,7 @@ TokenList TokenList::filter(Token::Type type) const
 TokenList TokenList::filterOut(Token::Type type) const
 {
     TokenList filtered;
-    foreach (TokenPtr token, *this)
+    for (TokenPtr token : *this)
         if (token->type != type)
             filtered << token;
 
@@ -503,7 +511,7 @@ TokenList TokenList::filterOut(Token::Type type) const
 TokenList TokenList::filterWhiteSpaces(bool includeComments) const
 {
     TokenList filtered;
-    foreach (TokenPtr token, *this)
+    for (TokenPtr token : *this)
         if (!token->isWhitespace(includeComments))
             filtered << token;
 

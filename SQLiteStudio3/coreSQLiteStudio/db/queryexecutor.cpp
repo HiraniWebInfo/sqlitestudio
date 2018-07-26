@@ -123,13 +123,13 @@ void QueryExecutor::setupExecutionChain()
 
     executionChain << new QueryExecutorExecute();
 
-    foreach (QueryExecutorStep* step, executionChain)
+    for (QueryExecutorStep* step : executionChain)
         step->init(this, context);
 }
 
 void QueryExecutor::clearChain()
 {
-    foreach (QueryExecutorStep* step, executionChain)
+    for (QueryExecutorStep* step : executionChain)
     {
         if (!allAdditionalStatelsssSteps.contains(step))
             delete step;
@@ -142,7 +142,7 @@ void QueryExecutor::executeChain()
 {
     // Go through all remaining steps
     bool result;
-    foreach (QueryExecutorStep* currentStep, executionChain)
+    for (QueryExecutorStep* currentStep : executionChain)
     {
         if (isInterrupted())
         {
@@ -293,6 +293,7 @@ void QueryExecutor::execInternal()
     context->noMetaColumns = noMetaColumns;
     context->resultsHandler = resultsHandler;
     context->preloadResults = preloadResults;
+    context->queryParameters = queryParameters;
 
     // Start the execution
     setupExecutionChain();
@@ -416,7 +417,12 @@ QSet<QueryExecutor::EditionForbiddenReason> QueryExecutor::getEditionForbiddenGl
 
 void QueryExecutor::setParam(const QString& name, const QVariant& value)
 {
-    context->queryParameters[name] = value;
+    queryParameters[name] = value;
+}
+
+void QueryExecutor::setParams(const QHash<QString, QVariant>& params)
+{
+    queryParameters = params;
 }
 
 void QueryExecutor::arg(const QVariant& value)
@@ -498,7 +504,7 @@ void QueryExecutor::simpleExecutionFinished(SqlQueryPtr results)
 
     ResultColumnPtr resCol;
     context->resultColumns.clear();
-    foreach (const QString& colName, results->getColumnNames())
+    for (const QString& colName : results->getColumnNames())
     {
         resCol = ResultColumnPtr::create();
         resCol->displayName = colName;
@@ -531,19 +537,19 @@ bool QueryExecutor::simpleExecIsSelect()
     tokens.trim();
 
     // First check if it's explicit "SELECT" or "VALUES" (the latter one added in SQLite 3.8.4).
-    TokenPtr token = tokens.first();
-    QString upper = token->value.toUpper();
-    if (token->type == Token::KEYWORD && (upper == "SELECT" || upper == "VALUES"))
+    TokenPtr firstToken = tokens.first();
+    QString upper = firstToken->value.toUpper();
+    if (firstToken->type == Token::KEYWORD && (upper == "SELECT" || upper == "VALUES"))
         return true;
 
     // Now it's only possible to be a SELECT if it starts with "WITH" statement.
-    if (token->type != Token::KEYWORD || upper != "WITH")
+    if (firstToken->type != Token::KEYWORD || upper != "WITH")
         return false;
 
     // Go through all tokens and find which one appears first (exclude contents indise parenthesis,
     // cause there will always be a SELECT for Common Table Expression).
     int depth = 0;
-    foreach (token, tokens)
+    for (const TokenPtr& token : tokens)
     {
         switch (token->type)
         {
@@ -577,7 +583,7 @@ bool QueryExecutor::simpleExecIsSelect()
 void QueryExecutor::cleanup()
 {
     Db* attDb = nullptr;
-    foreach (const QString& attDbName, context->dbNameToAttach.leftValues())
+    for (const QString& attDbName : context->dbNameToAttach.leftValues())
     {
         attDb = DBLIST->getByName(attDbName, Qt::CaseInsensitive);
         if (attDbName.isNull())
@@ -638,7 +644,7 @@ QStringList QueryExecutor::applyLimitForSimpleMethod(const QStringList &queries)
 QList<QueryExecutorStep*> QueryExecutor::createSteps(QueryExecutor::StepPosition position)
 {
     QList<QueryExecutorStep*> steps;
-    foreach (StepFactory* factory, additionalStatefulStepFactories[position])
+    for (StepFactory* factory : additionalStatefulStepFactories[position])
         steps << factory->produceQueryExecutorStep();
 
     return steps;

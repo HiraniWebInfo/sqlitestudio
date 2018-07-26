@@ -80,7 +80,7 @@ void ExtActionContainer::defShortcut(int action, CfgStringEntry *cfgEntry)
 
 void ExtActionContainer::setShortcutContext(const QList<qint32> actions, Qt::ShortcutContext context)
 {
-    foreach (qint32 act, actions)
+    for (qint32 act : actions)
         actionMap[act]->setShortcutContext(context);
 }
 
@@ -98,6 +98,11 @@ void ExtActionContainer::attachActionInMenu(QAction* parentAction, QAction* chil
 {
     QMenu* menu = getMenuForAction(parentAction, toolbar);
     menu->addAction(childAction);
+}
+
+void ExtActionContainer::addSeparatorInMenu(int parentAction, QToolBar* toolbar)
+{
+    addSeparatorInMenu(actionMap[parentAction], toolbar);
 }
 
 void ExtActionContainer::addSeparatorInMenu(QAction *parentAction, QToolBar* toolbar)
@@ -125,7 +130,7 @@ void ExtActionContainer::createAction(int action, QAction* qAction, const QObjec
 
 void ExtActionContainer::deleteActions()
 {
-    foreach (QAction* action, actionMap.values())
+    for (QAction* action : actionMap.values())
         delete action;
 
     actionMap.clear();
@@ -133,7 +138,7 @@ void ExtActionContainer::deleteActions()
 
 void ExtActionContainer::refreshShortcuts()
 {
-    foreach (int action, actionMap.keys())
+    for (int action : actionMap.keys())
     {
         if (!shortcuts.contains(action))
             continue;

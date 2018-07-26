@@ -19,12 +19,14 @@
 #include "parser/parser.h"
 #include "dbobjectdialogs.h"
 #include "dialogs/exportdialog.h"
+#include "themetuner.h"
+#include "dialogs/bindparamsdialog.h"
+#include "common/bindparam.h"
 #include <QComboBox>
 #include <QDebug>
 #include <QStringListModel>
 #include <QActionGroup>
 #include <QMessageBox>
-#include <themetuner.h>
 
 CFG_KEYS_DEFINE(EditorWindow)
 EditorWindow::ResultsDisplayMode EditorWindow::resultsDisplayMode;
@@ -100,6 +102,7 @@ void EditorWindow::init()
     createDbCombo();
     initActions();
     updateShortcutTips();
+    setupSqlHistoryMenu();
 
     Db* treeSelectedDb = DBTREE->getSelectedOpenDb();
     if (treeSelectedDb)
@@ -115,10 +118,12 @@ void EditorWindow::init()
 
     // SQL history list
     ui->historyList->setModel(CFG->getSqlHistoryModel());
+    ui->historyList->hideColumn(0);
     ui->historyList->resizeColumnToContents(1);
     connect(ui->historyList->selectionModel(), SIGNAL(currentRowChanged(QModelIndex,QModelIndex)),
             this, SLOT(historyEntrySelected(QModelIndex,QModelIndex)));
     connect(ui->historyList, SIGNAL(doubleClicked(QModelIndex)), this, SLOT(historyEntryActivated(QModelIndex)));
+    connect(ui->historyList, &QWidget::customContextMenuRequested, this, &EditorWindow::sqlHistoryContextMenuRequested);
 
     updateState();
 }
@@ -390,6 +395,7 @@ void EditorWindow::createActions()
     createAction(SHOW_PREV_TAB, tr("Show previous tab", "sql editor"), this, SLOT(showPrevTab()), this);
     createAction(FOCUS_RESULTS_BELOW, tr("Focus results below", "sql editor"), this, SLOT(focusResultsBelow()), this);
     createAction(FOCUS_EDITOR_ABOVE, tr("Focus SQL editor above", "sql editor"), this, SLOT(focusEditorAbove()), this);
+    createAction(DELETE_SINGLE_HISTORY_SQL, tr("Delete selected SQL history entries", "sql editor"), this, SLOT(deleteSelectedSqlHistory()), ui->historyList);
 
     // Static action triggers
     connect(staticActions[RESULTS_IN_TAB], SIGNAL(triggered()), this, SLOT(updateResultsDisplayMode()));
@@ -470,9 +476,15 @@ void EditorWindow::updateShortcutTips()
 void EditorWindow::execQuery(bool explain)
 {
     QString sql = getQueryToExecute(true);
+    QHash<QString, QVariant> bindParams;
+    bool proceed = processBindParams(sql, bindParams);
+    if (!proceed)
+        return;
+
     resultsModel->setDb(getCurrentDb());
     resultsModel->setExplainMode(explain);
     resultsModel->setQuery(sql);
+    resultsModel->setParams(bindParams);
     resultsModel->setQueryCountLimitForSmartMode(queryLimitForSmartExecution);
     ui->dataView->refreshData();
     updateState();
@@ -488,6 +500,61 @@ void EditorWindow::execQuery(bool explain)
 void EditorWindow::explainQuery()
 {
     execQuery(true);
+}
+
+bool EditorWindow::processBindParams(QString& sql, QHash<QString, QVariant>& queryParams)
+{
+    // Determin dialect
+    Dialect dialect = Dialect::Sqlite3;
+    Db* db = getCurrentDb();
+    if (db && db->isValid())
+        dialect = db->getDialect();
+
+    // Get all bind parameters from the query
+    TokenList tokens = Lexer::tokenize(sql, dialect);
+    TokenList bindTokens = tokens.filter(Token::BIND_PARAM);
+
+    // No bind tokens? Return fast.
+    if (bindTokens.isEmpty())
+        return true;
+
+    // Process bind tokens, prepare list for a dialog.
+    static_qstring(paramTpl, ":arg%1");
+    QString arg;
+    QVector<BindParam*> bindParams;
+    BindParam* bindParam = nullptr;
+    int i = 0;
+    for (const TokenPtr& token : bindTokens)
+    {
+        bindParam = new BindParam();
+        bindParam->position = i;
+        bindParam->originalName = token->value;
+        bindParam->newName = paramTpl.arg(i);
+        bindParams << bindParam;
+        i++;
+
+        token->value = bindParam->newName;
+    }
+
+    // Show dialog to query user for values
+    BindParamsDialog dialog(MAINWINDOW);
+    dialog.setBindParams(bindParams);
+    bool accepted = (dialog.exec() == QDialog::Accepted);
+
+    // Transfer values from dialog to arguments for query
+    if (accepted)
+    {
+        for (BindParam* bindParam : bindParams)
+            queryParams[bindParam->newName] = bindParam->value;
+
+        sql = tokens.detokenize();
+    }
+
+    // Cleanup
+    for (BindParam* bindParam : bindParams)
+        delete bindParam;
+
+    return accepted;
 }
 
 void EditorWindow::dbChanged()
@@ -597,15 +664,27 @@ void EditorWindow::focusEditorAbove()
 void EditorWindow::historyEntrySelected(const QModelIndex& current, const QModelIndex& previous)
 {
     UNUSED(previous);
-    QString sql = ui->historyList->model()->index(current.row(), 4).data().toString();
+    QString sql = ui->historyList->model()->index(current.row(), 5).data().toString();
     ui->historyContents->setPlainText(sql);
 }
 
 void EditorWindow::historyEntryActivated(const QModelIndex& current)
 {
-    QString sql = ui->historyList->model()->index(current.row(), 4).data().toString();
+    QString sql = ui->historyList->model()->index(current.row(), 5).data().toString();
     ui->sqlEdit->setPlainText(sql);
     ui->tabWidget->setCurrentIndex(0);
+}
+
+void EditorWindow::deleteSelectedSqlHistory()
+{
+    if (ui->historyList->selectionModel()->selectedIndexes().isEmpty())
+        return;
+
+    QList<qint64> ids;
+    for (const QModelIndex& idx : ui->historyList->selectionModel()->selectedRows(0))
+        ids += idx.data().toLongLong();
+
+    CFG->deleteSqlHistory(ids);
 }
 
 void EditorWindow::clearHistory()
@@ -616,6 +695,19 @@ void EditorWindow::clearHistory()
         return;
 
     CFG->clearSqlHistory();
+}
+
+void EditorWindow::sqlHistoryContextMenuRequested(const QPoint &pos)
+{
+    actionMap[DELETE_SINGLE_HISTORY_SQL]->setEnabled(!ui->historyList->selectionModel()->selectedIndexes().isEmpty());
+
+    sqlHistoryMenu->popup(ui->historyList->mapToGlobal(pos));
+}
+
+void EditorWindow::setupSqlHistoryMenu()
+{
+    sqlHistoryMenu = new QMenu(this);
+    sqlHistoryMenu->addAction(actionMap[DELETE_SINGLE_HISTORY_SQL]);
 }
 
 void EditorWindow::exportResults()

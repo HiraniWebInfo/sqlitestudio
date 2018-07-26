@@ -106,7 +106,7 @@ QList<QWidget*> MultiEditorDateTime::getNoScrollWidgets()
 QDateTime MultiEditorDateTime::fromString(const QString& value)
 {
     QDateTime dateTime;
-    foreach (const QString& format, getParsingFormats())
+    for (const QString& format : getParsingFormats())
     {
         dateTime = QDateTime::fromString(value, format);
         if (dateTime.isValid())
@@ -174,11 +174,6 @@ void MultiEditorDateTime::setReadOnly(bool value)
     dateTimeEdit->setVisible(!readOnly);
     dateTimeLabel->setVisible(readOnly);
     updateReadOnlyDisplay();
-}
-
-QString MultiEditorDateTime::getTabLabel()
-{
-    return tr("Date & time");
 }
 
 void MultiEditorDateTime::focusThisWidget()
@@ -272,4 +267,9 @@ int MultiEditorDateTimePlugin::getPriority(const DataType& dataType)
             return 1;
     }
     return 10;
+}
+
+QString MultiEditorDateTimePlugin::getTabLabel()
+{
+    return tr("Date & time");
 }

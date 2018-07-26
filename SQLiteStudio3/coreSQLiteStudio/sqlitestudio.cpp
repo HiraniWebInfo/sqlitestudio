@@ -22,6 +22,7 @@
 #include "services/impl/functionmanagerimpl.h"
 #include "services/impl/collationmanagerimpl.h"
 #include "services/impl/pluginmanagerimpl.h"
+#include "services/impl/sqliteextensionmanagerimpl.h"
 #include "services/updatemanager.h"
 #include "impl/dbattacherimpl.h"
 #include "services/exportmanager.h"
@@ -30,8 +31,8 @@
 #include "plugins/scriptingsql.h"
 #include "plugins/importplugin.h"
 #include "plugins/populateplugin.h"
-#include "services/bugreporter.h"
 #include "services/extralicensemanager.h"
+#include "services/sqliteextensionmanager.h"
 #include "translations.h"
 #include <QProcessEnvironment>
 #include <QThreadPool>
@@ -99,16 +100,6 @@ void SQLiteStudio::setUpdateManager(UpdateManager* value)
 }
 #endif
 
-BugReporter* SQLiteStudio::getBugReporter() const
-{
-    return bugReporter;
-}
-
-void SQLiteStudio::setBugReporter(BugReporter* value)
-{
-    bugReporter = value;
-}
-
 PopulateManager* SQLiteStudio::getPopulateManager() const
 {
     return populateManager;
@@ -131,25 +122,37 @@ void SQLiteStudio::setCodeFormatter(CodeFormatter* codeFormatter)
 
 QString SQLiteStudio::getHomePage() const
 {
-    static const QString url = QStringLiteral("http://sqlitestudio.pl");
+    static_qstring(url, "https://sqlitestudio.pl");
     return url;
 }
 
 QString SQLiteStudio::getForumPage() const
 {
-    static const QString url = QStringLiteral("http://forum.sqlitestudio.pl");
+    static_qstring(url, "https://forum.sqlitestudio.pl");
     return url;
 }
 
 QString SQLiteStudio::getUserManualPage() const
 {
-    static const QString url = QStringLiteral("http://wiki.sqlitestudio.pl/index.php/User_Manual");
+    static_qstring(url, "https://github.com/pawelsalawa/sqlitestudio/wiki/User_Manual");
     return url;
 }
 
 QString SQLiteStudio::getSqliteDocsPage() const
 {
-    static const QString url = QStringLiteral("http://sqlite.org/lang.html");
+    static_qstring(url, "http://sqlite.org/lang.html");
+    return url;
+}
+
+QString SQLiteStudio::getIssuesPage() const
+{
+    static_qstring(url, "https://github.com/pawelsalawa/sqlitestudio/issues");
+    return url;
+}
+
+QString SQLiteStudio::getNewIssuePage() const
+{
+    static_qstring(url, "https://github.com/pawelsalawa/sqlitestudio/issues/new");
     return url;
 }
 
@@ -196,6 +199,17 @@ void SQLiteStudio::setCollationManager(CollationManager* value)
 {
     safe_delete(collationManager);
     collationManager = value;
+}
+
+SqliteExtensionManager* SQLiteStudio::getSqliteExtensionManager() const
+{
+    return extensionManager;
+}
+
+void SQLiteStudio::setSqliteExtensionManager(SqliteExtensionManager* value)
+{
+    safe_delete(extensionManager);
+    extensionManager = value;
 }
 
 DbAttacherFactory* SQLiteStudio::getDbAttacherFactory() const
@@ -305,6 +319,7 @@ void SQLiteStudio::init(const QStringList& cmdListArguments, bool guiAvailable)
     functionManager = new FunctionManagerImpl();
 
     collationManager = new CollationManagerImpl();
+    extensionManager = new SqliteExtensionManagerImpl();
 
     cmdLineArgs = cmdListArguments;
 
@@ -320,7 +335,6 @@ void SQLiteStudio::init(const QStringList& cmdListArguments, bool guiAvailable)
     exportManager = new ExportManager();
     importManager = new ImportManager();
     populateManager = new PopulateManager();
-    bugReporter = new BugReporter();
 #ifdef PORTABLE_CONFIG
     updateManager = new UpdateManager();
 #endif
@@ -331,7 +345,7 @@ void SQLiteStudio::init(const QStringList& cmdListArguments, bool guiAvailable)
     extraLicenseManager->addLicense("Qt, QHexEdit (LGPL v2.1)", ":/docs/licenses/lgpl.txt");
     extraLicenseManager->addLicense("diff_match (Apache License v2.0)", ":/docs/licenses/diff_match.txt");
     extraLicenseManager->addLicense("RSA library (GPL v3)", ":/docs/licenses/gpl.txt");
-
+    extraLicenseManager->addLicense("SingleApplication (The MIT License)", ":/docs/licenses/mit.txt");
 }
 
 void SQLiteStudio::initPlugins()
@@ -357,7 +371,6 @@ void SQLiteStudio::cleanUp()
 #ifdef PORTABLE_CONFIG
         safe_delete(updateManager);
 #endif
-        safe_delete(bugReporter);
         safe_delete(populateManager);
         safe_delete(importManager);
         safe_delete(exportManager);

@@ -24,11 +24,11 @@ class ExportManager;
 class ImportManager;
 class PopulateManager;
 class PluginLoadingHandler;
-class BugReporter;
 #ifdef PORTABLE_CONFIG
 class UpdateManager;
 #endif
 class ExtraLicenseManager;
+class SqliteExtensionManager;
 
 /** @file */
 
@@ -117,6 +117,9 @@ class API_EXPORT SQLiteStudio : public QObject
         CollationManager* getCollationManager() const;
         void setCollationManager(CollationManager* value);
 
+        SqliteExtensionManager* getSqliteExtensionManager() const;
+        void setSqliteExtensionManager(SqliteExtensionManager* value);
+
         ExportManager* getExportManager() const;
         void setExportManager(ExportManager* value);
 
@@ -132,13 +135,12 @@ class API_EXPORT SQLiteStudio : public QObject
         CodeFormatter* getCodeFormatter() const;
         void setCodeFormatter(CodeFormatter* codeFormatter);
 
-        BugReporter* getBugReporter() const;
-        void setBugReporter(BugReporter* value);
-
         QString getHomePage() const;
         QString getForumPage() const;
         QString getUserManualPage() const;
         QString getSqliteDocsPage() const;
+        QString getIssuesPage() const;
+        QString getNewIssuePage() const;
 
 #ifdef PORTABLE_CONFIG
         UpdateManager* getUpdateManager() const;
@@ -200,10 +202,10 @@ class API_EXPORT SQLiteStudio : public QObject
         PluginManager* pluginManager = nullptr;
         DbAttacherFactory* dbAttacherFactory = nullptr;
         CollationManager* collationManager = nullptr;
+        SqliteExtensionManager* extensionManager = nullptr;
         ExportManager* exportManager = nullptr;
         ImportManager* importManager = nullptr;
         PopulateManager* populateManager = nullptr;
-        BugReporter* bugReporter = nullptr;
 #ifdef PORTABLE_CONFIG
         UpdateManager* updateManager = nullptr;
 #endif
@@ -262,7 +264,7 @@ class API_EXPORT SQLiteStudio : public QObject
    void someFunction()
    {
        QList<Db*> dblist = SQLITESTUDIO->getDbManager()->getDbList();
-       foreach (Db* db, dblist)
+       for (Db* db : dblist)
        {
            qOut << db->getName();
        }

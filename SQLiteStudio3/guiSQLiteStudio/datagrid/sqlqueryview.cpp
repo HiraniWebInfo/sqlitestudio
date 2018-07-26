@@ -17,7 +17,6 @@
 #include "common/utils_sql.h"
 #include "querygenerator.h"
 #include "services/codeformatter.h"
-#include <QHeaderView>
 #include <QPushButton>
 #include <QProgressBar>
 #include <QGridLayout>
@@ -29,6 +28,8 @@
 #include <QMenu>
 #include <QMimeData>
 #include <QCryptographicHash>
+#include <QMessageBox>
+#include <QScrollBar>
 
 CFG_KEYS_DEFINE(SqlQueryView)
 
@@ -55,10 +56,12 @@ void SqlQueryView::init()
     contextMenu = new QMenu(this);
     referencedTablesMenu = new QMenu(tr("Go to referenced row in..."), contextMenu);
 
+    setHorizontalHeader(new Header(this));
+
     connect(this, &QWidget::customContextMenuRequested, this, &SqlQueryView::customContextMenuRequested);
     connect(CFG_UI.Fonts.DataView, SIGNAL(changed(QVariant)), this, SLOT(updateFont()));
     connect(this, SIGNAL(activated(QModelIndex)), this, SLOT(itemActivated(QModelIndex)));
-    connect(this->horizontalHeader(), &QHeaderView::sectionResized, [this](int section, int, int newSize)
+    connect(horizontalHeader(), &QHeaderView::sectionResized, [this](int section, int, int newSize)
     {
         if (ignoreColumnWidthChanges)
             return;
@@ -84,12 +87,13 @@ void SqlQueryView::setupWidgetCover()
 void SqlQueryView::createActions()
 {
     createAction(COPY, ICONS.ACT_COPY, tr("Copy"), this, SLOT(copy()), this);
+    createAction(COPY_WITH_HEADER, ICONS.ACT_COPY, tr("Copy with headers"), this, SLOT(copyWithHeader()), this);
     createAction(COPY_AS, ICONS.ACT_COPY, tr("Copy as..."), this, SLOT(copyAs()), this);
     createAction(PASTE, ICONS.ACT_PASTE, tr("Paste"), this, SLOT(paste()), this);
     createAction(PASTE_AS, ICONS.ACT_PASTE, tr("Paste as..."), this, SLOT(pasteAs()), this);
     createAction(SET_NULL, ICONS.SET_NULL, tr("Set NULL values"), this, SLOT(setNull()), this);
     createAction(ERASE, ICONS.ERASE, tr("Erase values"), this, SLOT(erase()), this);
-    createAction(OPEN_VALUE_EDITOR, ICONS.OPEN_VALUE_EDITOR, tr("Edit value in editor"), this, SLOT(openValueEditor()), this);
+    createAction(OPEN_VALUE_EDITOR, ICONS.OPEN_VALUE_EDITOR, "", this, SLOT(openValueEditor()), this); // actual label is set dynamically in setupActionsForMenu()
     createAction(COMMIT, ICONS.COMMIT, tr("Commit"), this, SLOT(commit()), this);
     createAction(ROLLBACK, ICONS.ROLLBACK, tr("Rollback"), this, SLOT(rollback()), this);
     createAction(SELECTIVE_COMMIT, ICONS.COMMIT, tr("Commit selected cells"), this, SLOT(selectiveCommit()), this);
@@ -126,9 +130,17 @@ void SqlQueryView::setupActionsForMenu(SqlQueryItem* currentItem, const QList<Sq
     QList<SqlQueryItem*> uncommittedItems = getModel()->getUncommittedItems();
     int uncommittedCount = uncommittedItems.size();
 
+    // How many of selected items is editable
+    int editableSelCount = selCount;
+    for (SqlQueryItem* selItem : getSelectedItems())
+        if (selItem->getColumn()->editionForbiddenReason.size() > 0)
+            editableSelCount--;
+
+    bool currentItemEditable = (getCurrentItem()->getColumn()->editionForbiddenReason.size() == 0);
+
     // Uncommitted & selected items count
     int uncommittedSelCount = 0;
-    foreach (SqlQueryItem* item, uncommittedItems)
+    for (SqlQueryItem* item : uncommittedItems)
         if (selectedItems.contains(item))
             uncommittedSelCount++;
 
@@ -147,10 +159,16 @@ void SqlQueryView::setupActionsForMenu(SqlQueryItem* currentItem, const QList<Sq
     if (uncommittedCount > 0 && selCount > 0)
         contextMenu->addSeparator();
 
+    // Edit/show label for "open in editor" action
+    actionMap[OPEN_VALUE_EDITOR]->setText(currentItemEditable ? tr("Edit value in editor") : tr("Show value in a viewer"));
+
     if (selCount > 0)
     {
-        contextMenu->addAction(actionMap[ERASE]);
-        contextMenu->addAction(actionMap[SET_NULL]);
+        if (editableSelCount > 0)
+        {
+            contextMenu->addAction(actionMap[ERASE]);
+            contextMenu->addAction(actionMap[SET_NULL]);
+        }
         contextMenu->addAction(actionMap[OPEN_VALUE_EDITOR]);
         contextMenu->addSeparator();
     }
@@ -172,6 +190,7 @@ void SqlQueryView::setupActionsForMenu(SqlQueryItem* currentItem, const QList<Sq
 
         contextMenu->addSeparator();
         contextMenu->addAction(actionMap[COPY]);
+        contextMenu->addAction(actionMap[COPY_WITH_HEADER]);
         //contextMenu->addAction(actionMap[COPY_AS]); // TODO uncomment when implemented
         contextMenu->addAction(actionMap[PASTE]);
         //contextMenu->addAction(actionMap[PASTE_AS]); // TODO uncomment when implemented
@@ -179,7 +198,7 @@ void SqlQueryView::setupActionsForMenu(SqlQueryItem* currentItem, const QList<Sq
     if (additionalActions.size() > 0)
     {
         contextMenu->addSeparator();
-        foreach (QAction* action, additionalActions)
+        for (QAction* action : additionalActions)
             contextMenu->addAction(action);
     }
 }
@@ -206,7 +225,7 @@ QList<SqlQueryItem*> SqlQueryView::getSelectedItems()
 
     qSort(idxList);
     const SqlQueryModel* model = dynamic_cast<const SqlQueryModel*>(idxList.first().model());
-    foreach (const QModelIndex& idx, idxList)
+    for (const QModelIndex& idx : idxList)
         items << model->itemFromIndex(idx);
 
     return items;
@@ -321,7 +340,15 @@ void SqlQueryView::paste(const QList<QList<QVariant> >& data)
         return;
     }
 
-    qSort(selectedItems);
+    if (data.size() == 1 && data[0].size() == 1)
+    {
+        QVariant theValue = data[0][0];
+        for (SqlQueryItem* item : selectedItems)
+            item->setValue(theValue, false, false);
+
+        return;
+    }
+
     SqlQueryItem* topLeft = selectedItems.first();
 
     int columnCount = getModel()->columnCount();
@@ -331,7 +358,7 @@ void SqlQueryView::paste(const QList<QList<QVariant> >& data)
 
     SqlQueryItem* item = nullptr;
 
-    foreach (const QList<QVariant>& cells, data)
+    for (const QList<QVariant>& cells : data)
     {
         // Check if we're out of rows range
         if (rowIdx >= rowCount)
@@ -341,7 +368,7 @@ void SqlQueryView::paste(const QList<QList<QVariant> >& data)
             break;
         }
 
-        foreach (const QVariant& cell, cells)
+        for (const QVariant& cell : cells)
         {
             // Get current cell
             if (colIdx >= columnCount)
@@ -415,6 +442,78 @@ void SqlQueryView::goToReferencedRow(const QString& table, const QString& column
     win->execute();
 }
 
+void SqlQueryView::copy(bool withHeader)
+{
+    if (simpleBrowserMode)
+        return;
+
+    QList<SqlQueryItem*> selectedItems = getSelectedItems();
+    QList<QList<SqlQueryItem*> > groupedItems = SqlQueryModel::groupItemsByRows(selectedItems);
+
+    if (selectedItems.isEmpty())
+        return;
+
+    QVariant itemValue;
+    QStringList cells;
+    QList<QStringList> rows;
+
+    QPair<QString,QList<QList<QVariant>>> theDataPair;
+    QList<QList<QVariant>> theData;
+    QList<QVariant> theDataRow;
+
+    // Header
+    if (withHeader)
+    {
+        for (SqlQueryModelColumnPtr col : getModel()->getColumns().mid(0, groupedItems.first().size()))
+        {
+            theDataRow << col->displayName;
+            cells << col->displayName;
+        }
+
+        rows << cells;
+        cells.clear();
+
+        theData << theDataRow;
+        theDataRow.clear();
+    }
+
+    // Data
+    for (const QList<SqlQueryItem*>& itemsInRows : groupedItems)
+    {
+        for (SqlQueryItem* item : itemsInRows)
+        {
+            itemValue = item->getFullValue();
+            if (itemValue.userType() == QVariant::Double)
+                cells << doubleToString(itemValue);
+            else
+                cells << itemValue.toString();
+
+            theDataRow << itemValue;
+        }
+
+        rows << cells;
+        cells.clear();
+
+        theData << theDataRow;
+        theDataRow.clear();
+    }
+
+    QMimeData* mimeData = new QMimeData();
+    QString tsv = TsvSerializer::serialize(rows);
+    mimeData->setText(tsv);
+
+    QString md5 = QCryptographicHash::hash(tsv.toUtf8(), QCryptographicHash::Md5);
+    theDataPair.first = md5;
+    theDataPair.second = theData;
+
+    QByteArray serializedData;
+    QDataStream stream(&serializedData, QIODevice::WriteOnly);
+    stream << theDataPair;
+    mimeData->setData(mimeDataId, serializedData);
+
+    qApp->clipboard()->setMimeData(mimeData);
+}
+
 bool SqlQueryView::getSimpleBrowserMode() const
 {
     return simpleBrowserMode;
@@ -428,6 +527,17 @@ void SqlQueryView::setSimpleBrowserMode(bool value)
 void SqlQueryView::setIgnoreColumnWidthChanges(bool ignore)
 {
     ignoreColumnWidthChanges = ignore;
+}
+
+QMenu* SqlQueryView::getHeaderContextMenu() const
+{
+    return headerContextMenu;
+}
+
+void SqlQueryView::scrollContentsBy(int dx, int dy)
+{
+    QTableView::scrollContentsBy(dx, dy);
+    emit scrolledBy(dx, dy);
 }
 
 void SqlQueryView::updateCommitRollbackActions(bool enabled)
@@ -497,11 +607,18 @@ void SqlQueryView::updateFont()
 
 void SqlQueryView::executionStarted()
 {
+    beforeExecutionHorizontalPosition = horizontalScrollBar()->sliderPosition();
     widgetCover->show();
 }
 
 void SqlQueryView::executionEnded()
 {
+    if (beforeExecutionHorizontalPosition > -1)
+    {
+        horizontalScrollBar()->setSliderPosition(beforeExecutionHorizontalPosition);
+        emit scrolledBy(beforeExecutionHorizontalPosition, 0);
+    }
+
     widgetCover->hide();
 }
 
@@ -512,54 +629,12 @@ void SqlQueryView::setCurrentRow(int row)
 
 void SqlQueryView::copy()
 {
-    if (simpleBrowserMode)
-        return;
+    copy(false);
+}
 
-    QList<SqlQueryItem*> selectedItems = getSelectedItems();
-    QList<QList<SqlQueryItem*> > groupedItems = SqlQueryModel::groupItemsByRows(selectedItems);
-
-    QVariant itemValue;
-    QStringList cells;
-    QList<QStringList> rows;
-
-    QPair<QString,QList<QList<QVariant>>> theDataPair;
-    QList<QList<QVariant>> theData;
-    QList<QVariant> theDataRow;
-
-    foreach (const QList<SqlQueryItem*>& itemsInRows, groupedItems)
-    {
-        foreach (SqlQueryItem* item, itemsInRows)
-        {
-            itemValue = item->getFullValue();
-            if (itemValue.userType() == QVariant::Double)
-                cells << doubleToString(itemValue);
-            else
-                cells << itemValue.toString();
-
-            theDataRow << itemValue;
-        }
-
-        rows << cells;
-        cells.clear();
-
-        theData << theDataRow;
-        theDataRow.clear();
-    }
-
-    QMimeData* mimeData = new QMimeData();
-    QString tsv = TsvSerializer::serialize(rows);
-    mimeData->setText(tsv);
-
-    QString md5 = QCryptographicHash::hash(tsv.toUtf8(), QCryptographicHash::Md5);
-    theDataPair.first = md5;
-    theDataPair.second = theData;
-
-    QByteArray serializedData;
-    QDataStream stream(&serializedData, QIODevice::WriteOnly);
-    stream << theDataPair;
-    mimeData->setData(mimeDataId, serializedData);
-
-    qApp->clipboard()->setMimeData(mimeData);
+void SqlQueryView::copyWithHeader()
+{
+    copy(true);
 }
 
 void SqlQueryView::paste()
@@ -586,13 +661,30 @@ void SqlQueryView::paste()
     }
 
     QList<QStringList> deserializedRows = TsvSerializer::deserialize(mimeData->text());
+    bool trimOnPaste = false;
+    bool trimOnPasteAsked = false;
 
     QList<QVariant> dataRow;
     QList<QList<QVariant>> dataToPaste;
     for (const QStringList& cells : deserializedRows)
     {
         for (const QString& cell : cells)
-            dataRow << cell;
+        {
+#if QT_VERSION >= 0x050A00
+            if ((cell.front().isSpace() || cell.back().isSpace()) && !trimOnPasteAsked)
+#else
+            if ((cell.at(0).isSpace() || cell.at(cell.size() - 1).isSpace()) && !trimOnPasteAsked)
+#endif
+            {
+                QMessageBox::StandardButton choice;
+                choice = QMessageBox::question(this, tr("Trim pasted text?"),
+                                               tr("The pasted text contains leading or trailing white space. Trim it automatically?"));
+                trimOnPasteAsked = true;
+                trimOnPaste = (choice == QMessageBox::Yes);
+            }
+
+            dataRow << (trimOnPaste ? cell.trimmed() : cell);
+        }
 
         dataToPaste << dataRow;
         dataRow.clear();
@@ -700,4 +792,21 @@ void SqlQueryView::openValueEditor()
 int qHash(SqlQueryView::Action action)
 {
     return static_cast<int>(action);
+}
+
+SqlQueryView::Header::Header(SqlQueryView* parent) :
+    QHeaderView(Qt::Horizontal, parent)
+{
+}
+
+QSize SqlQueryView::Header::sectionSizeFromContents(int section) const
+{
+    QSize originalSize = QHeaderView::sectionSizeFromContents(section);
+    int colCount = dynamic_cast<SqlQueryView*>(parent())->getModel()->columnCount();
+    if (colCount <= 5)
+        return originalSize;
+
+    int wd = minHeaderWidth;
+    wd = qMin((wd + wd * 20 / colCount), originalSize.width());
+    return QSize(wd, originalSize.height());
 }

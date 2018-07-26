@@ -34,6 +34,7 @@ class API_EXPORT UpdateManager : public QObject
     private:
         QString updateBinaryAbsolutePath;
 
+        void checkForUpdatesAsync();
         bool waitForProcess(QProcess& proc);
         void processCheckResults(const QByteArray& results);
 
@@ -42,6 +43,8 @@ class API_EXPORT UpdateManager : public QObject
         void noUpdatesAvailable();
         void updatingError(const QString& errorMessage);
 };
+
+Q_DECLARE_METATYPE(QList<UpdateManager::UpdateEntry>)
 
 #define UPDATES SQLITESTUDIO->getUpdateManager()
 

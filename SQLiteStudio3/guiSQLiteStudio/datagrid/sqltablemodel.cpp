@@ -76,7 +76,7 @@ bool SqlTableModel::commitAddedRow(const QList<SqlQueryItem*>& itemsInRow)
     // Handle error
     if (result->isError())
     {
-        foreach (SqlQueryItem* item, itemsInRow)
+        for (SqlQueryItem* item : itemsInRow)
             item->setCommittingError(true);
 
         notifyError(tr("Error while committing new row: %1").arg(result->getErrorText()));
@@ -147,6 +147,67 @@ bool SqlTableModel::commitDeletedRow(const QList<SqlQueryItem*>& itemsInRow)
     return true;
 }
 
+void SqlTableModel::applyFilter(const QString& value, FilterValueProcessor valueProc)
+{
+    static_qstring(sql, "SELECT * FROM %1 WHERE %2");
+
+    if (value.isEmpty())
+    {
+        resetFilter();
+        return;
+    }
+
+    Dialect dialect = db->getDialect();
+    QStringList conditions;
+    for (SqlQueryModelColumnPtr column : columns)
+        conditions << wrapObjIfNeeded(column->column, dialect)+" "+valueProc(value);
+
+    setQuery(sql.arg(getDataSource(), conditions.join(" OR ")));
+    executeQuery();
+}
+
+void SqlTableModel::applyFilter(const QStringList& values, FilterValueProcessor valueProc)
+{
+    static_qstring(sql, "SELECT * FROM %1 WHERE %2");
+    if (values.isEmpty())
+    {
+        resetFilter();
+        return;
+    }
+
+    if (values.size() != columns.size())
+    {
+        qCritical() << "Asked to per-column filter, but number columns"
+                    << columns.size() << "is different than number of values" << values.size();
+        return;
+    }
+
+    Dialect dialect = db->getDialect();
+    QStringList conditions;
+    for (int i = 0, total = columns.size(); i < total; ++i)
+    {
+        if (values[i].isEmpty())
+            continue;
+
+        conditions << wrapObjIfNeeded(columns[i]->column, dialect)+" "+valueProc(values[i]);
+    }
+
+    setQuery(sql.arg(getDataSource(), conditions.join(" AND ")));
+    executeQuery();
+}
+
+QString SqlTableModel::stringFilterValueProcessor(const QString& value)
+{
+    static_qstring(pattern, "LIKE '%%1%'");
+    return pattern.arg(escapeString(value));
+}
+
+QString SqlTableModel::regExpFilterValueProcessor(const QString& value)
+{
+    static_qstring(pattern, "REGEXP '%1'");
+    return pattern.arg(escapeString(value));
+}
+
 bool SqlTableModel::supportsModifyingQueriesInMenu() const
 {
     return true;
@@ -166,36 +227,22 @@ void SqlTableModel::applySqlFilter(const QString& value)
 
 void SqlTableModel::applyStringFilter(const QString& value)
 {
-    if (value.isEmpty())
-    {
-        resetFilter();
-        return;
-    }
+    applyFilter(value, &stringFilterValueProcessor);
+}
 
-    Dialect dialect = db->getDialect();
-    QStringList conditions;
-    foreach (SqlQueryModelColumnPtr column, columns)
-        conditions << wrapObjIfNeeded(column->column, dialect)+" LIKE '%"+escapeString(value)+"%'";
-
-    setQuery("SELECT * FROM "+getDataSource()+" WHERE "+conditions.join(" OR "));
-    executeQuery();
+void SqlTableModel::applyStringFilter(const QStringList& values)
+{
+    applyFilter(values, &stringFilterValueProcessor);
 }
 
 void SqlTableModel::applyRegExpFilter(const QString& value)
 {
-    if (value.isEmpty())
-    {
-        resetFilter();
-        return;
-    }
+    applyFilter(value, &regExpFilterValueProcessor);
+}
 
-    Dialect dialect = db->getDialect();
-    QStringList conditions;
-    foreach (SqlQueryModelColumnPtr column, columns)
-        conditions << wrapObjIfNeeded(column->column, dialect)+" REGEXP '"+escapeString(value)+"'";
-
-    setQuery("SELECT * FROM "+getDataSource()+" WHERE "+conditions.join(" OR "));
-    executeQuery();
+void SqlTableModel::applyRegExpFilter(const QStringList& values)
+{
+    applyFilter(values, &regExpFilterValueProcessor);
 }
 
 void SqlTableModel::resetFilter()
@@ -394,10 +441,9 @@ void SqlTableModel::updateColumnsAndValues(const QList<SqlQueryItem*>& itemsInRo
 
     SqlQueryItem* item = nullptr;
     int i = 0;
-    foreach (SqlQueryModelColumnPtr modelColumn, modelColumns)
+    for (SqlQueryModelColumnPtr modelColumn : modelColumns)
     {
         item = itemsInRow[i++];
-        qDebug() << "commit cell:" << item->getValue();
         if (item->getValue().isNull())
         {
             if (CFG_UI.General.UseDefaultValueForNull.get() && modelColumn->isDefault())
@@ -422,7 +468,7 @@ void SqlTableModel::updateColumnsAndValuesWithDefaultValues(const QList<SqlQuery
     Dialect dialect = db->getDialect();
 
     // First try to find the one with DEFAULT value
-    foreach (SqlQueryModelColumnPtr modelColumn, modelColumns)
+    for (SqlQueryModelColumnPtr modelColumn : modelColumns)
     {
         if (modelColumn->isDefault())
         {
@@ -434,7 +480,7 @@ void SqlTableModel::updateColumnsAndValuesWithDefaultValues(const QList<SqlQuery
     }
 
     // No DEFAULT, try with AUTOINCR
-    foreach (SqlQueryModelColumnPtr modelColumn, modelColumns)
+    for (SqlQueryModelColumnPtr modelColumn : modelColumns)
     {
         if (modelColumn->isPk() && modelColumn->isAutoIncr())
         {

@@ -173,10 +173,7 @@ SOURCES +=\
     uidebug.cpp \
     debugconsole.cpp \
     common/extactionprototype.cpp \
-    dialogs/bugdialog.cpp \
     dialogs/aboutdialog.cpp \
-    dialogs/bugreportlogindialog.cpp \
-    windows/bugreporthistorywindow.cpp \
     dialogs/newversiondialog.cpp \
     dialogs/quitconfirmdialog.cpp \
     common/datawidgetmapper.cpp \
@@ -188,7 +185,12 @@ SOURCES +=\
     common/centerediconitemdelegate.cpp \
     datagrid/sqlviewmodel.cpp \
     common/exttableview.cpp \
-    common/exttablewidget.cpp
+    common/exttablewidget.cpp \
+    windows/sqliteextensioneditor.cpp \
+    windows/sqliteextensioneditormodel.cpp \
+    dialogs/bindparamsdialog.cpp \
+    dialogs/execfromfiledialog.cpp \
+    dialogs/fileexecerrorsdialog.cpp
 
 HEADERS  += mainwindow.h \
     iconmanager.h \
@@ -324,10 +326,7 @@ HEADERS  += mainwindow.h \
     uidebug.h \
     debugconsole.h \
     common/extactionprototype.h \
-    dialogs/bugdialog.h \
     dialogs/aboutdialog.h \
-    dialogs/bugreportlogindialog.h \
-    windows/bugreporthistorywindow.h \
     dialogs/newversiondialog.h \
     guiSQLiteStudio_global.h \
     dialogs/quitconfirmdialog.h \
@@ -340,7 +339,13 @@ HEADERS  += mainwindow.h \
     common/centerediconitemdelegate.h \
     datagrid/sqlviewmodel.h \
     common/exttableview.h \
-    common/exttablewidget.h
+    common/exttablewidget.h \
+    windows/sqliteextensioneditor.h \
+    windows/sqliteextensioneditormodel.h \
+    dialogs/bindparamsdialog.h \
+    common/bindparam.h \
+    dialogs/execfromfiledialog.h \
+    dialogs/fileexecerrorsdialog.h
 
 FORMS    += mainwindow.ui \
     dbtree/dbtree.ui \
@@ -382,15 +387,16 @@ FORMS    += mainwindow.ui \
     dialogs/dbconverterdialog.ui \
     dialogs/dbdialog.ui \
     debugconsole.ui \
-    dialogs/bugdialog.ui \
     dialogs/aboutdialog.ui \
-    dialogs/bugreportlogindialog.ui \
-    windows/bugreporthistorywindow.ui \
     dialogs/newversiondialog.ui \
     dialogs/quitconfirmdialog.ui \
     dialogs/languagedialog.ui \
     dialogs/cssdebugdialog.ui \
-    dialogs/indexexprcolumndialog.ui
+    dialogs/indexexprcolumndialog.ui \
+    windows/sqliteextensioneditor.ui \
+    dialogs/bindparamsdialog.ui \
+    dialogs/execfromfiledialog.ui \
+    dialogs/fileexecerrorsdialog.ui
 
 RESOURCES += \
     icons.qrc \

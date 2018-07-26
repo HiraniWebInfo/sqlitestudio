@@ -35,6 +35,11 @@ QVariant ConfigMock::get(const QString&, const QString&)
     return QVariant();
 }
 
+QVariant ConfigMock::get(const QString &, const QString &, const QVariant &)
+{
+    return QVariant();
+}
+
 QHash<QString, QVariant> ConfigMock::getAll()
 {
     return QHash<QString, QVariant>();
@@ -102,6 +107,10 @@ void ConfigMock::clearSqlHistory()
 {
 }
 
+void ConfigMock::deleteSqlHistory(const QList<qint64>&)
+{
+}
+
 QAbstractItemModel* ConfigMock::getSqlHistoryModel()
 {
     return nullptr;
@@ -122,6 +131,37 @@ void ConfigMock::clearCliHistory()
 QStringList ConfigMock::getCliHistory() const
 {
     return QStringList();
+}
+
+void ConfigMock::addBindParamHistory(const QVector<QPair<QString, QVariant> >&)
+{
+}
+
+void ConfigMock::applyBindParamHistoryLimit()
+{
+}
+
+QVector<QPair<QString, QVariant> > ConfigMock::getBindParamHistory(const QStringList&) const
+{
+    return QVector<QPair<QString, QVariant>>();
+}
+
+void ConfigMock::addPopulateHistory(const QString&, const QString&, int, const QHash<QString, QPair<QString, QVariant> >&)
+{
+}
+
+void ConfigMock::applyPopulateHistoryLimit()
+{
+}
+
+QHash<QString, QPair<QString, QVariant>> ConfigMock::getPopulateHistory(const QString&, const QString&, int&) const
+{
+    return QHash<QString, QPair<QString, QVariant>>();
+}
+
+QVariant ConfigMock::getPopulateHistory(const QString&) const
+{
+    return QVariant();
 }
 
 void ConfigMock::addDdlHistory(const QString&, const QString&, const QString&)

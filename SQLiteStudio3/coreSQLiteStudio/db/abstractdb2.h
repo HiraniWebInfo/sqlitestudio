@@ -44,8 +44,10 @@ class AbstractDb2 : public AbstractDb
          * All values from this constructor are just passed to AbstractDb constructor.
          */
         AbstractDb2(const QString& name, const QString& path, const QHash<QString, QVariant>& connOptions);
-
         ~AbstractDb2();
+
+        bool loadExtension(const QString& filePath, const QString& initFunc = QString());
+        bool isComplete(const QString& sql) const;
 
     protected:
         bool isOpenInternal();
@@ -153,6 +155,20 @@ AbstractDb2<T>::~AbstractDb2()
     safe_delete(dbOperMutex);
     if (isOpenInternal())
         closeInternal();
+}
+
+template <class T>
+bool AbstractDb2<T>::loadExtension(const QString& filePath, const QString& initFunc)
+{
+    UNUSED(filePath);
+    UNUSED(initFunc);
+    return false;
+}
+
+template<class T>
+bool AbstractDb2<T>::isComplete(const QString& sql) const
+{
+    return sqlite_complete(sql.toUtf8().constData());
 }
 
 template <class T>
@@ -646,7 +662,7 @@ bool AbstractDb2<T>::Query::execInternal(const QHash<QString, QVariant>& args)
         return false;
 
     int paramIdx = 1;
-    foreach (const QString& paramName, queryWithParams.second)
+    for (const QString& paramName : queryWithParams.second)
     {
         if (!args.contains(paramName))
         {

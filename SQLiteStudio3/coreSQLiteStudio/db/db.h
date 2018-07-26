@@ -485,6 +485,12 @@ class API_EXPORT Db : public QObject, public Interruptable
         virtual bool isReadable() = 0;
 
         /**
+         * @brief Tells whether given SQL is a complete statement or not.
+         * @return true if given SQL is complete SQL (or more), or it misses some part.
+         */
+        virtual bool isComplete(const QString& sql) const = 0;
+
+        /**
          * @brief Checks if the database is writable at the moment.
          * @return true if the database is writable, or false otherwise.
          *
@@ -629,7 +635,7 @@ class API_EXPORT Db : public QObject, public Interruptable
          * This method is used only to let the database know, that the given function exists in FunctionManager and we want it to be visible
          * in this database's context. When the function is called from SQL query, then the function execution is delegated to the FunctionManager.
          *
-         * For details about usage of custom SQL functions see http://wiki.sqlitestudio.pl/index.php/User_Manual#Custom_SQL_functions
+         * For details about usage of custom SQL functions see https://github.com/pawelsalawa/sqlitestudio/wiki/User_Manual#custom-sql-functions
          *
          * @see FunctionManager
          */
@@ -652,7 +658,7 @@ class API_EXPORT Db : public QObject, public Interruptable
          * This method is used only to let the database know, that the given function exists in FunctionManager and we want it to be visible
          * in this database's context. When the function is called from SQL query, then the function execution is delegated to the FunctionManager.
          *
-         * For details about usage of custom SQL functions see http://wiki.sqlitestudio.pl/index.php/User_Manual#Custom_SQL_functions
+         * For details about usage of custom SQL functions see https://github.com/pawelsalawa/sqlitestudio/wiki/User_Manual#custom-sql-functions
          *
          * @see FunctionManager
          */
@@ -669,7 +675,7 @@ class API_EXPORT Db : public QObject, public Interruptable
          * when comparing 2 values in the database in order to sort query results. The name passed to this method is a name of the collation
          * as it is used in SQL queries and also the same name must be used when defining collation in Collations editor window.
          *
-         * For details about usage of custom collations see http://wiki.sqlitestudio.pl/index.php/User_Manual#Custom_collations
+         * For details about usage of custom collations see https://github.com/pawelsalawa/sqlitestudio/wiki/User_Manual#custom-sql-functions
          *
          * @see CollationManager
          */
@@ -683,6 +689,19 @@ class API_EXPORT Db : public QObject, public Interruptable
          * See registerCollation() for details on custom collations.
          */
         virtual bool deregisterCollation(const QString& name) = 0;
+
+        /**
+         * @brief Loads a SQLite extension.
+         * @param filePath Absolute path to the extension file (dll/so/dylib).
+         * @param initFunc Optional entry point function. If empty, SQLite's default will be used.
+         * @return true on success, or false on failure.
+         *
+         * This function works only on SQLite 3 drivers, as SQLite 2 does not support extensions.
+         * More details can be found at https://sqlite.org/c3ref/load_extension.html
+         *
+         * If function returns false, use getErrorText() to discover details.
+         */
+        virtual bool loadExtension(const QString& filePath, const QString& initFunc = QString()) = 0;
 
     signals:
         /**

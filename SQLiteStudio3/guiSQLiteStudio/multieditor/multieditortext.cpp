@@ -5,6 +5,7 @@
 #include <QVBoxLayout>
 #include <QAction>
 #include <QMenu>
+#include <QDebug>
 
 CFG_KEYS_DEFINE(MultiEditorText)
 
@@ -38,11 +39,6 @@ QVariant MultiEditorText::getValue()
 void MultiEditorText::setReadOnly(bool value)
 {
     textEdit->setReadOnly(value);
-}
-
-QString MultiEditorText::getTabLabel()
-{
-    return tr("Text");
 }
 
 QToolBar* MultiEditorText::getToolBar(int toolbar) const
@@ -181,4 +177,9 @@ int MultiEditorTextPlugin::getPriority(const DataType& dataType)
             break;
     }
     return 1;
+}
+
+QString MultiEditorTextPlugin::getTabLabel()
+{
+    return tr("Text");
 }

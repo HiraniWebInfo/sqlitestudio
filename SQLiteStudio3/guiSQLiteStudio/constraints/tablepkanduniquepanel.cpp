@@ -71,6 +71,7 @@ void TablePrimaryKeyAndUniquePanel::buildColumn(SqliteCreateTable::Column* colum
     int col = 0;
 
     QCheckBox* check = new QCheckBox(column->name);
+    check->setProperty(UI_PROP_COLUMN, column->name);
     columnsLayout->addWidget(check, row, col++);
     columnSignalMapping->setMapping(check, row);
     connect(check, SIGNAL(toggled(bool)), columnSignalMapping, SLOT(map()));
@@ -109,7 +110,7 @@ int TablePrimaryKeyAndUniquePanel::getColumnIndex(const QString& colName)
     {
         item = columnsLayout->itemAtPosition(i, 0)->widget();
         cb = qobject_cast<QCheckBox*>(item);
-        if (cb->text().compare(colName, Qt::CaseInsensitive) == 0)
+        if (cb->property(UI_PROP_COLUMN).toString().compare(colName, Qt::CaseInsensitive) == 0)
             return i;
     }
     return -1;
@@ -190,7 +191,7 @@ void TablePrimaryKeyAndUniquePanel::storeConfiguration()
         constr->onConflict = sqliteConflictAlgo(ui->conflictComboBox->currentText());
 
     // Columns
-    foreach (SqliteIndexedColumn* idxCol, constr->indexedColumns)
+    for (SqliteIndexedColumn* idxCol : constr->indexedColumns)
         delete idxCol;
 
     constr->indexedColumns.clear();
@@ -207,7 +208,7 @@ void TablePrimaryKeyAndUniquePanel::storeConfiguration()
         if (!check->isChecked())
             continue;
 
-        name = check->text();
+        name = check->property(UI_PROP_COLUMN).toString();
 
         if (constr->dialect == Dialect::Sqlite3)
         {
@@ -256,7 +257,7 @@ void TablePrimaryKeyAndUniquePanel::readConstraint()
     int idx;
     QCheckBox* check = nullptr;
     QComboBox* combo = nullptr;
-    foreach (SqliteIndexedColumn* idxCol, constr->indexedColumns)
+    for (SqliteIndexedColumn* idxCol : constr->indexedColumns)
     {
         idx = getColumnIndex(idxCol->name);
         if (idx < 0)
@@ -294,6 +295,6 @@ void TablePrimaryKeyAndUniquePanel::buildColumns()
 
     SqliteCreateTable* createTable = dynamic_cast<SqliteCreateTable*>(constraint->parentStatement());
     int row = 0;
-    foreach (SqliteCreateTable::Column* column, createTable->columns)
+    for (SqliteCreateTable::Column* column : createTable->columns)
         buildColumn(column, row++);
 }

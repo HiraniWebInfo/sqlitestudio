@@ -182,7 +182,7 @@ QList<SelectResolver::Column> SelectResolver::resolveAvailableCoreColumns(Sqlite
 
     SqliteSelect* select = dynamic_cast<SqliteSelect*>(selectCore->parentStatement());
     if (select && select->with)
-        markCteColumns();
+        markCteColumns(&columns);
 
     return columns;
 }
@@ -244,9 +244,9 @@ void SelectResolver::markCompoundColumns()
     markCurrentColumnsWithFlag(FROM_COMPOUND_SELECT);
 }
 
-void SelectResolver::markCteColumns()
+void SelectResolver::markCteColumns(QList<Column>* columnList)
 {
-    markCurrentColumnsWithFlag(FROM_CTE_SELECT);
+    markCurrentColumnsWithFlag(FROM_CTE_SELECT, columnList);
 }
 
 void SelectResolver::markGroupedColumns()
@@ -290,9 +290,9 @@ void SelectResolver::fixColumnNames()
     }
 }
 
-void SelectResolver::markCurrentColumnsWithFlag(SelectResolver::Flag flag)
+void SelectResolver::markCurrentColumnsWithFlag(SelectResolver::Flag flag, QList<Column>* columnList)
 {
-    QMutableListIterator<Column> it(currentCoreResults);
+    QMutableListIterator<Column> it(columnList ? *columnList : currentCoreResults);
     while (it.hasNext())
         it.next().flags |= flag;
 }
@@ -603,6 +603,9 @@ QList<SelectResolver::Column> SelectResolver::resolveTableFunctionColumns(Sqlite
 {
     static_qstring(columnSqlTpl, "SELECT * FROM %1 LIMIT 0");
     SqlQueryPtr result = db->exec(columnSqlTpl.arg(joinSrc->detokenize()));
+    if (result->isError())
+        errors << result->getErrorText();
+
     QStringList columnNames = result->getColumnNames();
 
     QList<Column> columnSources;

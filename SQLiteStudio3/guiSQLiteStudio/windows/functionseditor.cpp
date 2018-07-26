@@ -140,13 +140,13 @@ void FunctionsEditor::init()
     model->setData(FUNCTIONS->getAllScriptFunctions());
 
     // Language plugins
-    foreach (ScriptingPlugin* plugin, PLUGINS->getLoadedPlugins<ScriptingPlugin>())
+    for (ScriptingPlugin* plugin : PLUGINS->getLoadedPlugins<ScriptingPlugin>())
         scriptingPlugins[plugin->getLanguage()] = plugin;
 
     ui->langCombo->addItems(scriptingPlugins.keys());
 
     // Syntax highlighting plugins
-    foreach (SyntaxHighlighterPlugin* plugin, PLUGINS->getLoadedPlugins<SyntaxHighlighterPlugin>())
+    for (SyntaxHighlighterPlugin* plugin : PLUGINS->getLoadedPlugins<SyntaxHighlighterPlugin>())
         highlighterPlugins[plugin->getLanguageName()] = plugin;
 
     updateState();
@@ -204,7 +204,7 @@ void FunctionsEditor::functionSelected(int row)
     // Arguments
     ui->argsList->clear();
     QListWidgetItem* item = nullptr;
-    foreach (const QString& arg, model->getArguments(row))
+    for (const QString& arg : model->getArguments(row))
     {
         item = new QListWidgetItem(arg);
         item->setFlags(item->flags() | Qt::ItemIsEditable);
@@ -232,7 +232,7 @@ void FunctionsEditor::functionSelected(int row)
     }
 
     updatesForSelection = false;
-    currentModified = false;
+    currentModified = model->isModified(row);
 
     updateCurrentFunctionState();
 }
@@ -606,7 +606,7 @@ void FunctionsEditor::applyFilter(const QString& value)
 
 void FunctionsEditor::help()
 {
-    static const QString url = QStringLiteral("http://wiki.sqlitestudio.pl/index.php/User_Manual#Custom_SQL_functions");
+    static const QString url = QStringLiteral("https://github.com/pawelsalawa/sqlitestudio/wiki/User_Manual#custom-sql-functions");
     QDesktopServices::openUrl(QUrl(url, QUrl::StrictMode));
 }
 

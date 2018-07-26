@@ -8,6 +8,7 @@
 #include "sqlerrorresults.h"
 #include "sqlerrorcodes.h"
 #include "services/notifymanager.h"
+#include "services/sqliteextensionmanager.h"
 #include "log.h"
 #include "parser/lexer.h"
 #include <QDebug>
@@ -120,7 +121,7 @@ void AbstractDb::registerAllFunctions()
 
 void AbstractDb::registerAllCollations()
 {
-    foreach (const QString& name, registeredCollations)
+    for (const QString& name : registeredCollations)
     {
         if (!deregisterCollation(name))
             qWarning() << "Failed to deregister custom collation:" << name;
@@ -128,11 +129,47 @@ void AbstractDb::registerAllCollations()
 
     registeredCollations.clear();
 
-    foreach (const CollationManager::CollationPtr& collPtr, COLLATIONS->getCollationsForDatabase(getName()))
+    for (const CollationManager::CollationPtr& collPtr : COLLATIONS->getCollationsForDatabase(getName()))
         registerCollation(collPtr->name);
 
     disconnect(COLLATIONS, SIGNAL(collationListChanged()), this, SLOT(registerAllCollations()));
     connect(COLLATIONS, SIGNAL(collationListChanged()), this, SLOT(registerAllCollations()));
+}
+
+void AbstractDb::loadExtensions()
+{
+    for (const SqliteExtensionManager::ExtensionPtr& extPtr : SQLITE_EXTENSIONS->getExtensionForDatabase(getName()))
+        loadedExtensionCount += loadExtension(extPtr->filePath, extPtr->initFunc) ? 1 : 0;
+
+    connect(SQLITE_EXTENSIONS, SIGNAL(extensionListChanged()), this, SLOT(reloadExtensions()));
+}
+
+void AbstractDb::reloadExtensions()
+{
+    if (!isOpen())
+        return;
+
+    bool doOpen = false;
+    if (loadedExtensionCount > 0)
+    {
+        if (!closeQuiet())
+        {
+            qWarning() << "Failed to close database for extension reloading.";
+            return;
+        }
+
+        doOpen = true;
+        loadedExtensionCount = 0;
+        disconnect(SQLITE_EXTENSIONS, SIGNAL(extensionListChanged()), this, SLOT(reloadExtensions()));
+    }
+
+    if (doOpen && !openQuiet())
+    {
+        qCritical() << "Failed to re-open database for extension reloading.";
+        return;
+    }
+
+    loadExtensions();
 }
 
 bool AbstractDb::isOpen()
@@ -166,7 +203,7 @@ QString AbstractDb::generateUniqueDbNameNoLock()
     }
 
     QStringList existingDatabases;
-    foreach (SqlResultsRowPtr row, results->getAll())
+    for (SqlResultsRowPtr row : results->getAll())
         existingDatabases << row->value("name").toString();
 
     return generateUniqueName("attached", existingDatabases);
@@ -346,6 +383,9 @@ bool AbstractDb::openAndSetup()
 
     // Implementation specific initialization
     initAfterOpen();
+
+    // Load extension
+    loadExtensions();
 
     // Custom SQL functions
     registerAllFunctions();
@@ -658,7 +698,7 @@ void AbstractDb::detachAll()
     if (!isOpenInternal())
         return;
 
-    foreach (Db* db, attachedDbMap.rightValues())
+    for (Db* db : attachedDbMap.rightValues())
         detachInternal(db);
 }
 
@@ -683,7 +723,7 @@ QString AbstractDb::getUniqueNewObjectName(const QString &attachedDbName)
     QSet<QString> existingNames;
     SqlQueryPtr results = exec(QString("SELECT name FROM %1.sqlite_master").arg(dbName));
 
-    foreach (SqlResultsRowPtr row, results->getAll())
+    for (SqlResultsRowPtr row : results->getAll())
         existingNames << row->value(0).toString();
 
     return randStrNotIn(16, existingNames, false);
